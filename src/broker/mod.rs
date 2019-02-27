@@ -12,43 +12,36 @@ use tokio::net::TcpStream;
 use crate::errors::Error;
 
 pub struct MessageBroker {
-    client: Option<AmpqClient<TcpStream>>,
-    channel: Option<Channel<TcpStream>>,
+    channel: Channel<TcpStream>,
     group: String,
     subgroup: String
 }
 
 impl MessageBroker {
-    fn new(group: String, subgroup: String) -> MessageBroker {
-        Self {
-            channel: None,
-            client: None,
-            group,
-            subgroup
-        }
-    }
-
-    fn connect(&mut self, addr: &SocketAddr) -> impl Future<Item = (), Error = Error> {
+    fn new(addr: &SocketAddr, group: String, subgroup: String) -> impl Future<Item = MessageBroker, Error = Error> {
         TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
             AmpqClient::connect(stream, ConnectionOptions::default())
                 .map_err(Error::from)
         }).and_then(|(ampq, heartbeat)| {
+            let client = ampq.clone();
             tokio::spawn(heartbeat.map_err(|_| ()));
             ampq.create_channel().map_err(Error::from)
-        }).and_then(|channel| {
+        }).map(move |channel| {
             info!("Created AMPQ Channel With ID: {}", &channel.id);
-            self.channel = Some(channel);
+            Self {
+                channel,
+                group,
+                subgroup
+            }
         })
+
     }
 
-    fn subscribe(&self, evt: String) {
+    fn subscribe(&self, evt: String) -> impl Future<Item = (), Error = Error> {
         let queue_name = format!("{}{}{}", self.group, self.subgroup, evt);
-        let chan = match &self.channel {
-            Some(c) => c,
-            None => {}
-        };
+        let chan = self.channel.clone();
         chan.queue_declare(queue_name.as_str(), QueueDeclareOptions::default(), FieldTable::new())
-            .and_then(|queue| {
+            .and_then(move |queue| {
                 info!("Channel ID: {} has declared queue: {}", &chan.id, &queue_name);
                 chan.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new())
             })
@@ -58,7 +51,7 @@ impl MessageBroker {
                     debug!("Received Message: {:?}", message);
                     // TODO: Actually handle Message from consumer.
                     let decoded = std::str::from_utf8(&message.data).unwrap();
-                    chan.basic_ack(message.delivery_tag, false);
+                    chan.basic_ack(message.delivery_tag, false)
                 })
             }).map_err(Error::from)
     }
