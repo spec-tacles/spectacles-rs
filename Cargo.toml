@@ -7,8 +7,16 @@ authors = ["Rich Rancy <richrancy@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-lapin-futures = "0.17.0"
+lapin-futures = { version = "0.17.0", optional = true }
 tokio = "0.1.15"
 futures = "0.1.25"
 reqwest = "0.9.10"
 failure = "0.1.5"
+tokio-tungstenite = "0.6.0"
+log = "0.4.6"
+
+[features]
+default = [
+    "broker"
+]
+broker = ["lapin-futures"]
