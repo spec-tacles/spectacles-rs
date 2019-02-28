@@ -1,0 +1,1 @@
+const GATEWAY_VERSION: u8 = 6;
