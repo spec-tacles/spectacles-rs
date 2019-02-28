@@ -7,15 +7,13 @@ use std::{
 
 use failure::Fail;
 use lapin_futures::error::Error as LapinError;
-use reqwest::Error as ReqwestError;
 
 pub type Result<T> = StdResult<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
     Lapin(LapinError),
-    Io(IoError),
-    Reqwest(ReqwestError)
+    Io(IoError)
 }
 
 impl Display for Error {
@@ -28,7 +26,6 @@ impl StdError for Error {
     fn description(&self) -> &str {
         match self {
             Error::Lapin(e) => e.name().unwrap(),
-            Error::Reqwest(e) => e.description(),
             Error::Io(e) => e.description()
         }
     }
@@ -43,11 +40,5 @@ impl From<LapinError> for Error {
 impl From<IoError> for Error {
     fn from(err: IoError) -> Self {
         Error::Io(err)
-    }
-}
-
-impl From<ReqwestError> for Error {
-    fn from(err: ReqwestError) -> Self {
-        Error::Reqwest(err)
     }
 }
