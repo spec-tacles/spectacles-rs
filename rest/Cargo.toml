@@ -1,0 +1,15 @@
+[package]
+name = "spectacles-rest"
+description = "A Spectacles REST client for Rust."
+repository = "https://github.com/spec-tacles/spectacles-rs"
+version = "0.1.0"
+authors = ["Texlo-Dev <richrancy@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "spectacles_rest"
+
+[dependencies]
+reqwest = "0.9.10"
+serde = "1.0.88"
+serde_json = "1.0.38"

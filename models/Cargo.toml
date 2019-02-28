@@ -1,0 +1,13 @@
+[package]
+name = "spectacles-model"
+description = "Discord types and structures for Spectacles.rs."
+repository = "https://github.com/spec-tacles/spectacles-rs"
+version = "0.1.0"
+authors = ["Texlo-Dev <richrancy@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "spectacles_model"
+[dependencies]
+serde = "1.0.88"
+serde_json = "1.0.38"

@@ -1,0 +1,17 @@
+[package]
+name = "spectacles-broker"
+description = "Message broker for the Spectacles Discord library."
+version = "0.1.0"
+authors = ["Texlo-Dev <richrancy@gmail.com>"]
+repository = "https://github.com/spec-tacles/spectacles-rs"
+edition = "2018"
+
+[lib]
+name = "spectacles_broker"
+
+[dependencies]
+lapin-futures = "0.17.0"
+tokio = "0.1.15"
+futures = "0.1.25"
+failure = "0.1.5"
+log = "0.4.6"
