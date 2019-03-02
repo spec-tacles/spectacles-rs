@@ -3,14 +3,15 @@ use std::{
     sync::Arc,
 };
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 
 use crate::shard::Shard;
 
+/// An organized group of Discord gateway shards.
 pub struct Cluster {
     token: String,
     shard_count: i32,
-    shards: HashMap<i32, Arc<Mutex<Shard>>>
+    shards: RwLock<HashMap<i32, Arc<Mutex<Shard>>>>
 }
 
 impl Cluster {
@@ -18,19 +19,22 @@ impl Cluster {
     pub fn new(token: String) -> Cluster {
         Self {
             token,
-            shards: HashMap::new(),
+            shards: RwLock::new(HashMap::new()),
             shard_count: -1
         }
     }
+    /// Spawns Discord shards according to a provided range.
+    /// If no shard count was previously provided, the recommended amount of shards will be spawned.
+    pub fn spawn_range(&self, min: i32, max: i32) {
 
-    /// Sets the amount of shards to be spawned with this cluster.
-    pub fn with_shards(&mut self, amount: i32){
-        self.shard_count = amount;
     }
 
-    /// Spawns Discord shards according to the provided shard count.
-    /// If no shard count was previously provided, the recommended amount of shards will be spawned,
-    pub fn spawn(min: i32, max: i32) {
+    /// Spawn
+    pub fn spawn_recommended(&self) {
+
+    }
+
+    fn _create_shard(&self) {
 
     }
 }

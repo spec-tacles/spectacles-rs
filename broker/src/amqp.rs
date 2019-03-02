@@ -10,21 +10,21 @@ use tokio::net::TcpStream;
 
 use crate::errors::Error;
 
+/// Event handler for receiving messages from the message broker.
+pub trait EventHandler {
+    fn on_message(&self, payload: String);
+}
 /// Central message broker client.
-pub struct MessageBroker<T>
-where T: Fn(String)
-{
+pub struct MessageBroker {
     channel: Channel<TcpStream>,
-    event_cb: T,
+    event_cb: Box<dyn EventHandler>,
     group: String,
     subgroup: String
 }
 
-impl <T> MessageBroker<T>
-    where T: Fn(String)
-{
+impl MessageBroker {
     /// Creates a new message broker, with the provided address, groups. You must also provide a callback that will be called each time a message is received.
-    pub fn new(addr: &SocketAddr, group: &'static str, subgroup: &'static str, event_cb: T) -> impl Future<Item = MessageBroker<T>, Error = Error> {
+    pub fn new(addr: &SocketAddr, group: &'static str, subgroup: &'static str, event_cb: Box<dyn EventHandler>) -> impl Future<Item = MessageBroker, Error = Error> {
         TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
             AmqpClient::connect(stream, ConnectionOptions::default())
                 .map_err(Error::from)
@@ -73,7 +73,7 @@ impl <T> MessageBroker<T>
                 stream.for_each(move |message| {
                     debug!("Received Message: {:?}", message);
                     let decoded = std::str::from_utf8(&message.data).unwrap();
-                    (self.event_cb)(decoded.to_string());
+                    self.event_cb.on_message(decoded.to_string());
                     self.channel.basic_ack(message.delivery_tag, false)
                 })
             })

@@ -1,13 +1,15 @@
 //! This library provides an interface to the Spectacles Gateway.
 
 #[macro_use] extern crate log;
+#[macro_use] extern crate serde_json;
 
-/// Spectacles gateway client utilities.
-pub mod client;
-/// An organized group of shards.
-pub mod cluster;
-/// A Spectacles Gateway Shard.
-pub mod shard;
+pub use cluster::Cluster;
+pub use manager::GatewayManager;
+pub use shard::Shard;
 
+mod cluster;
+mod shard;
+mod manager;
 mod constants;
 mod errors;
+
