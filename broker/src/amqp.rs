@@ -11,20 +11,24 @@ use tokio::net::TcpStream;
 use crate::errors::Error;
 
 /// Event handler for receiving messages from the message broker.
-pub trait EventHandler {
+pub trait MessageHandler {
     fn on_message(&self, payload: String);
 }
 /// Central message broker client.
-pub struct MessageBroker {
+pub struct MessageBroker<H>
+where H: MessageHandler + Send + Sync
+{
     channel: Channel<TcpStream>,
-    event_cb: Box<dyn EventHandler>,
+    event_cb: H,
     group: String,
     subgroup: String
 }
 
-impl MessageBroker {
-    /// Creates a new message broker, with the provided address, groups. You must also provide a callback that will be called each time a message is received.
-    pub fn new(addr: &SocketAddr, group: &'static str, subgroup: &'static str, event_cb: Box<dyn EventHandler>) -> impl Future<Item = MessageBroker, Error = Error> {
+impl <H> MessageBroker <H>
+where H: MessageHandler + Send + Sync
+{
+    /// Creates a new message broker, with the provided address, groups, and a message handler struct.
+    pub fn new(addr: &SocketAddr, group: &'static str, subgroup: &'static str, event_cb: H) -> impl Future<Item = MessageBroker<H>, Error = Error> {
         TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
             AmqpClient::connect(stream, ConnectionOptions::default())
                 .map_err(Error::from)
@@ -40,7 +44,6 @@ impl MessageBroker {
                 subgroup: subgroup.to_string()
             }
         })
-
     }
 
     /// Closes the currently open channel.
@@ -60,7 +63,7 @@ impl MessageBroker {
         ).map_err(Error::from)
     }
 
-    /// Subscribes to the provided event
+    /// Subscribes to the provided event.
     pub fn subscribe(&self, evt: &'static str) -> impl Future<Item = (), Error = Error> + '_ {
         let queue_name = format!("{}{}{}", self.group, self.subgroup, evt);
         self.channel.queue_declare(queue_name.as_str(), QueueDeclareOptions::default(), FieldTable::new())
