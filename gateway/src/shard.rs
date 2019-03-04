@@ -2,6 +2,7 @@ use std::{
     io::{Error as IoError, ErrorKind},
     str::FromStr,
     sync::Arc,
+    time::{Duration, Instant}
 };
 
 use futures::{
@@ -13,6 +14,7 @@ use futures::{
 use native_tls::TlsConnector;
 use parking_lot::Mutex;
 use tokio::net::TcpStream as TokioTcpStream;
+use tokio::timer::{Delay, Interval};
 use tokio_dns::TcpStream;
 use tokio_tls::TlsStream;
 use tokio_tungstenite::{
@@ -26,7 +28,8 @@ use tokio_tungstenite::{
 use tokio_tungstenite::stream::Stream as TungsteniteStream;
 use url::Url;
 
-use spectacles_model::gateway::Opcodes;
+use spectacles_model::gateway::{Opcodes, ReceivePacket};
+use spectacles_model::gateway::HelloPacket;
 
 use crate::{
     constants::{GATEWAY_URL, GATEWAY_VERSION},
@@ -35,11 +38,6 @@ use crate::{
 
 pub type ShardSplitStream = SplitStream<WebSocketStream<TungsteniteStream<TokioTcpStream, TlsStream<TokioTcpStream>>>>;
 
-/// A shard's heartbeat information.
-#[derive(Debug, Copy, Clone)]
-pub struct Heartbeat {
-    pub sequence: u64
-}
 /// A Spectacles Gateway shard.
 #[derive(Clone)]
 pub struct Shard {
@@ -49,11 +47,32 @@ pub struct Shard {
     pub info: [u64; 2],
     /// The session ID of this shard, if applicable.
     pub session_id: Option<String>,
+    /// The interval at which a heartbeat is made.
+    pub interval: Option<u64>,
     /// The channel which is used to send websocket messages.
     pub sender: Arc<Mutex<UnboundedSender<WebsocketMessage>>>,
     /// The shard's message stream, which is used to receive messages.
-    pub stream: Arc<Mutex<ShardSplitStream>>,
-    has_acked: bool,
+    pub stream: Arc<Mutex<Option<ShardSplitStream>>>,
+    /// Used to determine whether or not the shard is currently in a state of connecting.
+    current_state: Arc<Mutex<String>>,
+    /// This shard's current heartbeat.
+    pub heartbeat: Arc<Mutex<Heartbeat>>,
+}
+
+/// A shard's heartbeat information.
+#[derive(Debug, Copy, Clone)]
+pub struct Heartbeat {
+    pub acknowledged: bool,
+    pub seq: u64,
+}
+
+impl Heartbeat {
+    fn new() -> Heartbeat {
+        Self {
+            acknowledged: false,
+            seq: 0
+        }
+    }
 }
 
 impl Shard {
@@ -65,11 +84,48 @@ impl Shard {
                     token,
                     session_id: None,
                     info,
+                    interval: None,
                     sender: Arc::new(Mutex::new(sender)),
-                    stream: Arc::new(Mutex::new(stream)),
-                    has_acked: true,
+                    current_state: Arc::new(Mutex::new(String::from("handshake"))),
+                    stream: Arc::new(Mutex::new(Some(stream))),
+                    heartbeat: Arc::new(Mutex::new(Heartbeat::new()))
                 }
             })
+    }
+
+    pub fn fufill_gateway(&mut self, packet: &ReceivePacket) {
+        let info = self.info.clone();
+        match packet.op {
+            Opcodes::Hello => {
+                let hello: HelloPacket = serde_json::from_value(packet.d).unwrap();
+                debug!("[Shard {}] Hello Packet received, Interval: {}", info[0], hello.heartbeat_interval);
+                if hello.heartbeat_interval > 0 {
+                    self.interval = Some(hello.heartbeat_interval);
+                }
+                let dur = Duration::from_millis(hello.heartbeat_interval);
+
+                if self.current_state.lock().clone() == "handshake".to_string() {
+                    let timeout = Interval::new(Instant::now(), dur)
+                        .map_err(|err| {
+                            warn!("Could not begin heartbeat interval. {:?}", err);
+                        })
+                        .for_each(move |_| {
+                            if let Err(r) = self.heartbeat() {
+                                warn!("[Shard {}] Failed to perform heartbeat. {:?}", &info[0], r);
+                                return Err(());
+                            }
+                            Ok(())
+                        });
+                    tokio::spawn(timeout);
+                    info!("[Shard {}] Identifying with the gateway.", &info[0]);
+                    if let Err(e) = self.identify() {
+                        warn!("[Shard {}] Failed to identify with gateway. {:?}", &info[0], e);
+                    };
+                }
+            },
+            _ => {}
+        };
+
     }
 
     /// Identifies a shard with Discord.
@@ -90,6 +146,25 @@ impl Shard {
         }))
     }
 
+    pub fn heartbeat(&mut self) -> Result<()> {
+        info!("[Shard {}] Attempting to heartbeat.", self.info[0]);
+        let seq = self.heartbeat.lock().seq;
+
+        self.send_json(&json!({
+            "op": Opcodes::Heartbeat as i32,
+            "d": seq
+        }))
+    }
+
+    /// Resolves a Websocket message into a ReceivePacket struct.
+    pub fn resolve_packet(&self, mess: &WebsocketMessage) -> Result<ReceivePacket> {
+        match mess {
+            WebsocketMessage::Binary(v) => serde_json::from_slice(v),
+            WebsocketMessage::Text(v) => serde_json::from_str(v),
+            _ => unreachable!("Invalid type detected."),
+        }.map_err(From::from)
+    }
+
     /// Sends a payload to the Discord Gateway.
     pub fn send(&self, message: WebsocketMessage) -> Result<()> {
         self.sender.lock().start_send(message)
@@ -97,14 +172,9 @@ impl Shard {
             .map_err(From::from)
     }
 
-
     fn send_json(&mut self, value: &serde_json::Value) -> Result<()> {
         let json = serde_json::to_string(value)?;
         self.send(WebsocketMessage::text(json))
-    }
-
-    fn heartbeat(&self) {
-
     }
 
     fn begin_connection(ws: &str, shard_id: u64) -> impl Future<Item = (UnboundedSender<WebsocketMessage>, ShardSplitStream), Error = Error> {

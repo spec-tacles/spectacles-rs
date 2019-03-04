@@ -6,7 +6,7 @@ use crate::{
     User,
 };
 
-use super::{parse_snowflake, parse_snowflake_array};
+use super::parse_snowflake;
 
 pub use self::{
     member::GuildMember,
@@ -45,13 +45,13 @@ pub struct Guild {
     /// The explicit content filter level for this guild.
     pub explicit_content_filter: ExplicitContentFilter,
     /// The AFK channel ID for this guild.
-    #[serde(default, deserialize_with = "parse_snowflake")]
-    pub afk_channel_id: Option<u64>,
+    #[serde(default)]
+    pub afk_channel_id: Option<String>,
     /// The AFK channel timeout for this guild.
     #[serde(deserialize_with = "parse_snowflake")]
     pub afk_timeout: u64,
     /// The ID of the application which created the guild, if applicable.
-    #[serde(default, deserialize_with = "parse_snowflake")]
+    #[serde(default)]
     pub application_id: Option<u64>,
     /// The verification level, which determines which users can chat in a guild.
     pub verification_level: VerificationLevel,
@@ -63,7 +63,7 @@ pub struct Guild {
     #[serde(deserialize_with = "parse_snowflake")]
     pub embed_channel_id: u64,
     /// The ID of the channel in which system messages are sent to.
-    #[serde(default, deserialize_with = "parse_snowflake")]
+    #[serde(default)]
     pub system_channel_id: Option<u64>,
     /// The time that this guild was joined.
     pub joined_at: DateTime<FixedOffset>,
@@ -74,7 +74,7 @@ pub struct Guild {
     /// Whether or not the server widget is enabled.
     pub widget_enabled: bool,
     /// The ID of the guild's widget channel, if one exists.
-    #[serde(default, deserialize_with = "parse_snowflake")]
+    #[serde(default)]
     pub widget_channel_id: Option<u64>,
     /// The default message notification setting for this guild.
     pub default_message_notifications: DefaultMessageNotifications,
@@ -145,13 +145,12 @@ pub struct GuildMemberRemove {
 }
 
 /// Represents a packet sent when a guild member is updated.
+#[derive(Deserialize, Clone, Debug)]
 pub struct GuildMemberUpdate {
     /// The ID of the guild.
     #[serde(deserialize_with = "parse_snowflake")]
     pub guild_id: u64,
-    /// An array of the user's role IDs.
-    #[serde(deserialize_with = "parse_snowflake_array")]
-    pub roles: Vec<u64>,
+    pub roles: Vec<String>,
     /// The user who was updated.
     pub user: User,
     /// The nickname of the user in the guild.
@@ -162,37 +161,40 @@ pub struct GuildMemberUpdate {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildMembersChunk {
     /// The guild ID of the guild.
-    #[serde(deserialize = "parse_snowflake")]
+    #[serde(deserialize_with = "parse_snowflake")]
     pub guild_id: u64,
     /// An array of guild member objects.
     pub members: Vec<GuildMember>
 }
 
 /// Represents a packet sent when a role is created ina  guild.
+#[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleCreate {
     /// The guild ID of the guild.
-    #[serde(deserialize = "parse_snowflake")]
+    #[serde(deserialize_with = "parse_snowflake")]
     pub guild_id: u64,
     /// The newly created role.
     pub role: Role
 }
 
-/// Represents a packet sent when a role is created ina  guild.
+/// Represents a packet sent when a role is created in a guild.
+#[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleUpdate {
     /// The guild ID of the guild.
-    #[serde(deserialize = "parse_snowflake")]
+    #[serde(deserialize_with = "parse_snowflake")]
     pub guild_id: u64,
     /// The updated role.
     pub role: Role
 }
 
-/// Represents a packet sent when a role is created ina  guild.
+/// Represents a packet sent when a role is created in a guild.
+#[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleDelete {
     /// The guild ID of the guild.
-    #[serde(deserialize = "parse_snowflake")]
+    #[serde(deserialize_with = "parse_snowflake")]
     pub guild_id: u64,
     /// The ID of the deleted role.
-    #[serde(deserialize = "parse_snowflake")]
+    #[serde(deserialize_with = "parse_snowflake")]
     pub role: u64
 }
 

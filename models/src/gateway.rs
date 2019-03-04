@@ -2,8 +2,6 @@ use crate::guild::UnavailableGuild;
 use crate::presence::Activity;
 use crate::User;
 
-use super::{parse_snowflake, parse_snowflake_array};
-
 /// Returns useful information about the application from the gateway.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GatewayBot {
@@ -28,10 +26,12 @@ pub struct SessionStartLimit {
 /// A JSON packet that the client would receive over the Discord gateway.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ReceivePacket {
-    op: Opcodes,
-    d: serde_json::Value,
-    s: u64,
-    t: GatewayEvent,
+    /// The op code for this payload.
+    pub op: Opcodes,
+    /// The JSON value for this payload.
+    pub d: serde_json::Value,
+    pub s: u64,
+    pub t: GatewayEvent,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -41,7 +41,14 @@ pub struct SendPacket {
     d: serde_json::Value
 }
 
-#[derive(Serialize, Deseralize, Debug, Clone)]
+/// A JSON packet which defines the heartbeat the client should adhere to.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct HelloPacket {
+    pub heartbeat_interval: u64,
+    pub _trace: Vec<String>
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 /// A Request guild members packet.
 pub struct RequestGuildMembers {
     /// The guild ID to get members for.
@@ -108,8 +115,7 @@ pub struct ReadyPacket {
     /// The session ID that is used to resume a gateway connection.
     pub session_id: String,
     /// The guilds that a user is in, used for debugging.
-    #[serde(deserialize_with = "parse_snowflake_array")]
-    pub _trace: Vec<u64>,
+    pub _trace: Vec<String>,
     /// Information about the current shard, if applicable.
     #[serde(default)]
     pub shard: [u64; 2]
@@ -119,8 +125,7 @@ pub struct ReadyPacket {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResumedPacket {
     /// The guilds that a user is in, used for debugging.
-    #[serde(deserialize_with = "parse_snowflake_array")]
-    pub _trace: Vec<u64>
+    pub _trace: Vec<String>
 
 }
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -166,80 +171,46 @@ pub enum GatewayEvent {
 impl GatewayEvent {
     fn to_str(&self) -> &str {
         match *self {
-            /// Defines the heartbeat interval.
             GatewayEvent::Hello => "HELLO",
-            /// Contains the client's initial state.
             GatewayEvent::Ready => "READY",
-            /// A response when a client resumes a session.
             GatewayEvent::Resumed => "RESUMED",
-            /// A failure response to an Identify or Resume packet.
             GatewayEvent::InvalidSession => "INVALID_SESSION",
-            /// Emitted when a new channel is created.
             GatewayEvent::ChannelCreate => "CHANNEL_CREATE",
-            /// Emitted when a channel is updated.
             GatewayEvent::ChannelUpdate => "CHANNEL_UPDATE",
-            /// Emitted when a channel is deleted.
             GatewayEvent::ChannelDelete => "CHANNEL_DELETE",
-            /// Emitted when a channel's pins are updated.
             GatewayEvent::ChannelPinsUpdate => "CHANNEL_PINS_UPDATE",
-            /// Emitted when a guild becomes available, a lazy loaded unavailable guild, or when the user joins a new guild.
             GatewayEvent::GuildCreate => "GUILD_CREATE",
-            /// Emitted when a guild is updated.
             GatewayEvent::GuildUpdate => "GUILD_UPDATE",
-            /// Emitted when a guild becomes available, or if the user leaves/is removed from the guild.
             GatewayEvent::GuildDelete => "GUILD_DELETE",
-            /// Emitted when a user was banned from the guild.
             GatewayEvent::GuildBanAdd => "GUILD_BAN_ADD",
-            /// Emitted when a user is unbanned from a guild
             GatewayEvent::GuildBanRemove => "GUILD_BAN_REMOVE",
-            /// Emitted a guild's emojis are updated.
             GatewayEvent::GuildEmojisUpdate => "GUILD_EMOJIS_UPDATE",
-            /// Emitted when a guild integration is updated.
             GatewayEvent::GuildIntegrationsUpdate => "GUILD_INTEGRATIONS_UPDATE",
-            /// Emitted when a new user joins a guild.
             GatewayEvent::GuildMemberAdd => "GUILD_MEMBER_ADD",
-            /// Emitted when a guild member has been updated.
             GatewayEvent::GuildMemberUpdate => "GUILD_MEMBER_UPDATE",
-            /// Emitted when a user is removed from a guild.
             GatewayEvent::GuildMemberRemove => "GUILD_MEMBER_REMOVE",
-            /// The response when requesting guild members.
             GatewayEvent::GuildMembersChunk => "GUILD_MEMBERS_CHUNK",
-            /// Emitted when a guild role is created.
             GatewayEvent::GuildRoleCreate => "GUILD_ROLE_CREATE",
-            /// Emitted when a guild role is updated.
             GatewayEvent::GuildRoleUpdate => "GUILD_ROLE_UPDATE",
-            /// Emitted when a guild role is deleted.
             GatewayEvent::GuildRoleDelete => "GUILD_ROLE_DELETE",
-            /// Emitted when a message was created.
             GatewayEvent::MessageCreate => "MESSAGE_CREATE",
-            /// Emitted when a message is updated.
             GatewayEvent::MessageUpdate => "MESSAGE_UPDATE",
-            /// Emitted when a message is deleted.
             GatewayEvent::MessageDelete => "MESSAGE_DELETE",
-            /// Emitted when multiple messages were deleted at once.
             GatewayEvent::MessageDeleteBulk => "MESSAGE_DELETE_BULK",
-            /// Emitted when a user reacts to a message.
             GatewayEvent::MessageReactionAdd => "MESSAGE_REACTION_ADD",
-            /// Emitted when a user removes a reaction from a message.
             GatewayEvent::MessageReactionRemove => "MESSAGE_REACTION_REMOVE",
-            /// Emitted when all reactions were removed from a message.
             GatewayEvent::MessageReactionRemoveAll => "MESSAGE_REACTION_REMOVE_ALL",
-            /// Emitted when a user was updated.
             GatewayEvent::PresenceUpdate => "PRESENCE_UPDATE",
-            /// Emitted when a user starts typing in a channel.
             GatewayEvent::TypingStart => "TYPING_START",
-            /// Emitted when a user's properties change,
             GatewayEvent::UserUpdate => "USER_UPDATE",
-            /// Emitted when someone joins, leaves, or moved a voice channel.
             GatewayEvent::VoiceStateUpdate => "VOICE_STATE_UPDATE",
-            /// Emitted when a guild's voice server was updated.
             GatewayEvent::VoiceServerUpdate => "VOICE_SERVER_UPDATE",
-            /// Emitted when a webhook is created, updated, or deleted in a guild.
             GatewayEvent::WebhooksUpdate => "WEBHOOKS_UPDATE"
         }
     }
 }
 /// A set of possible Discord gateway opcodes.
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Opcodes {
     /// Dispatches a gateway event.
     Dispatch,

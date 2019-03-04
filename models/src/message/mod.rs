@@ -1,7 +1,7 @@
 //! Structs related to Discord messages in a guild channel.
 use chrono::{DateTime, FixedOffset};
 
-use crate::{parse_snowflake, parse_snowflake_array, User};
+use crate::{parse_snowflake, User};
 use crate::guild::GuildMember;
 
 pub use self::embed::*;
@@ -11,7 +11,7 @@ mod embed;
 mod emoji;
 
 /// A message sent in a channel on Discord.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Message {
     /// The message ID of the message.
     #[serde(deserialize_with = "parse_snowflake")]
@@ -20,14 +20,12 @@ pub struct Message {
     #[serde(deserialize_with = "parse_snowflake")]
     pub channel_id: u64,
     /// The ID of the guild that the message was sent in.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: Option<String>,
     /// The author of the message.
     pub author: User,
     /// The contents of this message.
     pub content: String,
     /// The guild member form of the message author.
-    #[serde(default)]
     pub member: GuildMember,
     /// The time that this message was sent.
     pub timestamp: DateTime<FixedOffset>,
@@ -38,8 +36,7 @@ pub struct Message {
     /// Whether or not this message mentioned everyone.
     pub mention_everyone: bool,
     /// Roles that were mentioned in this message.
-    #[serde(deserialize_with = "parse_snowflake_array")]
-    pub mention_roles: Vec<u64>,
+    pub mention_roles: Vec<String>,
     /// The message's attached files, if any.
     pub attachments: Vec<u64>, // TODO: Type Attachment struct
     /// Any embeds sent with this message.
@@ -57,24 +54,22 @@ pub struct Message {
     /// The type of message sent.
     pub r#type: MessageType,
     /// Message Activity sent with rich-presence embeds.
-    #[serde(default)]
     pub activity: MessageActivity,
     /// Message Application ent with Rich Presence embeds.
-    #[serde(default)]
     pub application: MessageApplication,
 }
 
 /// A Rich Presence Message activity.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct MessageActivity {
     /// The type of message activity.
-    pub r#type: MessageActivityType,
+    pub r#type: Option<MessageActivityType>,
     /// The party ID from a Rich Presence event.
-    #[serde(default)]
     pub party_id: String
 }
 
 /// A Rich Presence Message Application.
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct MessageApplication {
     /// The ID of the application.
     #[serde(deserialize_with = "parse_snowflake")]
@@ -90,7 +85,7 @@ pub struct MessageApplication {
 }
 
 /// A list of Message types.
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Serialize)]
 pub enum MessageType {
     Default,
     RecipientAdd,
@@ -103,7 +98,8 @@ pub enum MessageType {
 }
 
 /// A list of Message Activity types.
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
+
 pub enum MessageActivityType {
     Join = 1,
     Spectate,

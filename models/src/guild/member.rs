@@ -2,7 +2,7 @@ use chrono::{DateTime, FixedOffset};
 
 use crate::{
     guild::Role,
-    user::User
+    user::User,
 };
 
 use super::parse_snowflake;

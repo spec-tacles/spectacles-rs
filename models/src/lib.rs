@@ -23,13 +23,3 @@ pub fn parse_snowflake<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     let s = String::deserialize(deserializer)?;
     T::from_str(&s).map_err(de::Error::custom)
 }
-
-/// Used to parse JSON string arrays to integer vectors.
-pub fn parse_snowflake_array<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-    where T: IntoIterator,
-          T::Err: Display,
-          D: Deserializer<'de>
-{
-    let mapped = T.map(|el| el.parse::<u64>());
-    mapped.collect::<u64>()
-}

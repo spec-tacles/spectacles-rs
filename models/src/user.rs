@@ -1,6 +1,6 @@
 use super::parse_snowflake;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 /// Represents a User on Discord.
 pub struct User {
     /// The Snowflake ID of this user.
