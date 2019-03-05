@@ -36,6 +36,7 @@ pub struct EmbedFooter {
     /// The text of this footer.
     pub footer: String,
     /// The Icon URL of this footer.
+    pub icon_url: Option<String>
 
 }
 

@@ -8,27 +8,22 @@ use lapin_futures::{
 };
 use tokio::net::TcpStream;
 
-use crate::errors::Error;
+use crate::{errors::Error, MessageHandler};
 
-/// Event handler for receiving messages from the message broker.
-pub trait MessageHandler {
-    fn on_message(&self, payload: String);
-}
-/// Central message broker client.
-pub struct MessageBroker<H>
-where H: MessageHandler + Send + Sync
-{
-    channel: Channel<TcpStream>,
+/// Central AMQP message broker client.
+pub struct AmqpBroker<H: MessageHandler + Send + Sync> {
+    /// The AMQP channel used for processing messages.
+    pub channel: Channel<TcpStream>,
     event_cb: H,
-    group: String,
-    subgroup: String
+    /// The group used for consuming and producing messages.
+    pub group: String,
+    /// The subgroup used for consuming and producting messages.
+    pub subgroup: String
 }
 
-impl <H> MessageBroker <H>
-where H: MessageHandler + Send + Sync
-{
+impl <H: MessageHandler + Send + Sync> AmqpBroker <H> {
     /// Creates a new message broker, with the provided address, groups, and a message handler struct.
-    pub fn new(addr: &SocketAddr, group: &'static str, subgroup: &'static str, event_cb: H) -> impl Future<Item = MessageBroker<H>, Error = Error> {
+    pub fn new(addr: &SocketAddr, group: &'static str, subgroup: &'static str, event_cb: H) -> impl Future<Item = AmqpBroker<H>, Error = Error> {
         TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
             AmqpClient::connect(stream, ConnectionOptions::default())
                 .map_err(Error::from)

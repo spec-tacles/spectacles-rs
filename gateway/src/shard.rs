@@ -14,7 +14,7 @@ use futures::{
 use native_tls::TlsConnector;
 use parking_lot::Mutex;
 use tokio::net::TcpStream as TokioTcpStream;
-use tokio::timer::{Delay, Interval};
+use tokio::timer::Interval;
 use tokio_dns::TcpStream;
 use tokio_tls::TlsStream;
 use tokio_tungstenite::{
@@ -93,30 +93,18 @@ impl Shard {
             })
     }
 
-    pub fn fufill_gateway(&mut self, packet: &ReceivePacket) {
+    pub fn fufill_gateway(&mut self, packet: ReceivePacket) -> Box<Future<Item = (), Error = ()>> {
         let info = self.info.clone();
         match packet.op {
             Opcodes::Hello => {
                 let hello: HelloPacket = serde_json::from_value(packet.d).unwrap();
-                debug!("[Shard {}] Hello Packet received, Interval: {}", info[0], hello.heartbeat_interval);
+                trace!("[Shard {}] Hello packet received, Interval: {}", info[0], hello.heartbeat_interval);
                 if hello.heartbeat_interval > 0 {
                     self.interval = Some(hello.heartbeat_interval);
                 }
                 let dur = Duration::from_millis(hello.heartbeat_interval);
-
                 if self.current_state.lock().clone() == "handshake".to_string() {
-                    let timeout = Interval::new(Instant::now(), dur)
-                        .map_err(|err| {
-                            warn!("Could not begin heartbeat interval. {:?}", err);
-                        })
-                        .for_each(move |_| {
-                            if let Err(r) = self.heartbeat() {
-                                warn!("[Shard {}] Failed to perform heartbeat. {:?}", &info[0], r);
-                                return Err(());
-                            }
-                            Ok(())
-                        });
-                    tokio::spawn(timeout);
+                    tokio::spawn(Shard::begin_interval(self.clone(), dur));
                     info!("[Shard {}] Identifying with the gateway.", &info[0]);
                     if let Err(e) = self.identify() {
                         warn!("[Shard {}] Failed to identify with gateway. {:?}", &info[0], e);
@@ -124,8 +112,8 @@ impl Shard {
                 }
             },
             _ => {}
-        };
-
+        }
+        Box::new(futures::future::ok(()))
     }
 
     /// Identifies a shard with Discord.
@@ -170,6 +158,21 @@ impl Shard {
         self.sender.lock().start_send(message)
             .map(|_| ())
             .map_err(From::from)
+    }
+
+    fn begin_interval(mut shard: Shard, duration: Duration) -> impl Future<Item = (), Error = ()> {
+        let info = shard.info.clone();
+        Interval::new(Instant::now(), duration)
+            .map_err(move |err| {
+                warn!("[Shard {}] Failed to begin heartbeat interval. {:?}", info[0], err);
+            })
+            .for_each(move |_| {
+                if let Err(r) = shard.heartbeat() {
+                    warn!("[Shard {}] Failed to perform heartbeat. {:?}", info[0], r);
+                    return Err(());
+                }
+                Ok(())
+            })
     }
 
     fn send_json(&mut self, value: &serde_json::Value) -> Result<()> {

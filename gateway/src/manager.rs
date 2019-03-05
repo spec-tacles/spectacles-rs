@@ -18,7 +18,7 @@ use parking_lot::{Mutex, RwLock};
 use tokio::timer::Delay;
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
-use spectacles_model::gateway::GatewayBot;
+use spectacles_model::gateway::{GatewayBot, Opcodes};
 
 use crate::{
     constants::API_BASE,
@@ -53,7 +53,7 @@ pub struct ShardManager<H: EventHandler + Send + Sync + 'static> {
 
 impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
     /// Creates a new cluster, with the provided Discord API token.
-    pub fn new(token: String, options: ManagerOptions<H>) -> Self {
+    pub fn new(token: String, options: ManagerOptions<H>) -> impl Future<Item = ShardManager<H>, Error = Error> {
         let token = if token.starts_with("Bot ") {
             token
         } else {
@@ -61,32 +61,38 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
         };
 
         let (queue_sender, queue_receiver) = channel(0);
-
-        Self {
-            token,
-            reconnect_queue: ShardQueue::new(1),
-            queue_sender,
-            options,
-            queue_receiver: Some(queue_receiver),
-            message_stream: None,
-            shards: Arc::new(RwLock::new(HashMap::new())),
-        }
+        use reqwest::r#async::Client;
+        Client::new().get(format!("{}/gateway/bot", API_BASE).as_str())
+            .header("Authorization", token.clone()).send()
+            .and_then(|mut resp| resp.json::<GatewayBot>())
+            .map_err(Error::from)
+            .map(|gb| {
+                let shard_count = match options.strategy {
+                    ShardStrategy::Recommended => gb.shards,
+                    ShardStrategy::SpawnAmount(int) => int
+                };
+                Self {
+                    token,
+                    reconnect_queue: ShardQueue::new(shard_count as usize),
+                    queue_sender,
+                    options,
+                    queue_receiver: Some(queue_receiver),
+                    message_stream: None,
+                    shards: Arc::new(RwLock::new(HashMap::new())),
+                }
+        })
     }
 
     /// Spawns shards up to the specified amount and identifies them with Discord.
-    pub fn spawn(&mut self, shardcount: u64) -> Box<Future<Item = (), Error = Error> + Send> {
-        if self.reconnect_queue.queue.capacity() < shardcount as usize {
-            self.reconnect_queue.queue.reserve(shardcount as usize);
-        }
-
-        info!("[Manager] Attempting to spawn {} shards.", &shardcount);
-        for i in 0..shardcount {
+    pub fn spawn(&mut self) -> Box<Future<Item = (), Error = Error> + Send> {
+        let shard_count = self.reconnect_queue.queue.capacity() as u64;
+        info!("[Manager] Attempting to spawn {} shards.", &shard_count);
+        for i in 0..shard_count {
             trace!("[Manager] Sending shard {} to queue.", &i);
             tokio::spawn(self.reconnect_queue.push_back(i)
                 .map_err(move |_| error!("[Manager] Failed to place Shard {} into reconnect queue.", i))
             );
         }
-
         let (sender, receiver) = unbounded();
         self.message_stream = Some(receiver);
         let mut queue_sender = self.queue_sender.clone();
@@ -94,7 +100,6 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
         let token = self.token.clone();
         let newsender = sender.clone();
         let shards = self.shards.clone();
-
         tokio::spawn(self.reconnect_queue.pop_front()
             .and_then(move |shard| {
                 let shard = shard.expect("Shard queue is empty.");
@@ -105,24 +110,26 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
             .and_then(move |_| Self::receive_chan(
                 receiver,
                 token,
-                shardcount,
+                shard_count,
                 newsender,
                 shards
             ))
         );
+
         Box::new(futures::future::ok(()))
     }
 
-    pub fn events(self) -> impl Future<Item = (), Error = ()> + 'static {
+    pub fn process_events(self) -> impl Future<Item = (), Error = ()> + 'static {
         let messages = self.message_stream.unwrap();
         let handler = self.options.handler;
-        let future = messages.for_each(move |(mut shard, message)| {
-            let shard = shard.borrow_mut().lock();
+        messages.for_each(move |(mut shard, message)| {
+            let mut shard = shard.borrow_mut().lock();
             let event = shard.resolve_packet(&message).expect("Failed to parse the shard message.");
-            shard.fufill_gateway(&event);
-            handler.on_packet(event)
-        });
-        future
+            match event.op {
+                Opcodes::Dispatch => handler.on_packet(shard.info[0], event),
+                _ => shard.fufill_gateway(event)
+            }
+        })
     }
 
     fn receive_chan(
@@ -149,10 +156,6 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
                 })
         }).map_err(|_| ())
     }
-    /// Spawn the recommended amount of shards according to Discord for this token.
-    fn get_recommended(self) -> impl Future<Item = u64, Error = Error> {
-        self.get_gateway().map(|gb| gb.shards)
-    }
 
     fn create_shard(
         token: String,
@@ -161,6 +164,7 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
     ) -> impl Future<Item = Arc<Mutex<Shard>>, Error = ()> {
         Shard::new(token.clone(), info)
             .and_then(|res| {
+                use tokio::runtime::current_thread;
                 let shard = Arc::new(Mutex::new(res));
                 let sink = MessageSink {
                     shard: shard.clone(),
@@ -179,17 +183,6 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
             .map_err(move |err| error!("[Manager] Failed to start Shard {}. {:?}", info[0], err))
 
     }
-
-    fn get_gateway(&self) -> impl Future<Item = GatewayBot, Error = Error> {
-        use reqwest::r#async::Client;
-        Client::new().get(format!("{}/gateway/bot", API_BASE).as_str())
-            .header("Authorization", self.token.clone())
-            .send()
-            .and_then(|mut resp| resp.json::<GatewayBot>())
-            .map(|gb| gb)
-            .from_err()
-    }
-
 
     /*
     /// Spawn a specific range of shards in this process.

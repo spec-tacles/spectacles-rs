@@ -3,6 +3,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate serde_json;
 
+pub use errors::{Error, Result};
 pub use manager::*;
 pub use shard::Shard;
 use spectacles_model::gateway::ReceivePacket;
@@ -25,5 +26,5 @@ where H: EventHandler + Send + Sync
 /// The event handler trait, useful for receiving events from the websocket.
 pub trait EventHandler {
     /// Executed whenever a raw packet is received.
-    fn on_packet(&self, pkt: ReceivePacket) -> Box<futures::Future<Item = (), Error = ()>>;
+    fn on_packet(&self, shard_id: u64, pkt: ReceivePacket) -> Box<futures::Future<Item = (), Error = ()>>;
 }
