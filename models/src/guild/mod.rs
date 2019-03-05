@@ -28,12 +28,23 @@ pub struct Guild {
     pub icon: Option<String>,
     /// The guild's splash hash. Will be a None value if it does not exist.
     pub splash: Option<String>,
+    /// Whether or not the user is an owner of the guild.
+    pub owner: Option<bool>,
     /// The ID of the guild owner.
     pub owner_id: u64,
     /// The permissions that the user has in this guild.
-    pub permissions: i32,
+    pub permissions: Option<i32>,
     /// The region in which this guild is located.
     pub region: String,
+    /// The AFK channel ID for this guild.
+    pub afk_channel_id: Option<String>,
+    /// The AFK channel timeout for this guild.
+    #[serde(deserialize_with = "parse_snowflake")]
+    pub afk_timeout: u64,
+    /// Whether or not the guild can be embedded in a widget.
+    pub embed_enabled: Option<bool>,
+    /// The channel ID that an embed widget will be generated for.
+    pub embed_channel_id: Option<String>,
     /// The amount of members that are currently in this guild.
     pub member_count: String,
     /// A list of features that this guild currently has.
@@ -44,27 +55,14 @@ pub struct Guild {
     pub emojis: Vec<u64>, // TODO: Define Emoji struct
     /// The explicit content filter level for this guild.
     pub explicit_content_filter: ExplicitContentFilter,
-    /// The AFK channel ID for this guild.
-    #[serde(default)]
-    pub afk_channel_id: Option<String>,
-    /// The AFK channel timeout for this guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub afk_timeout: u64,
     /// The ID of the application which created the guild, if applicable.
-    #[serde(default)]
-    pub application_id: Option<u64>,
+    pub application_id: Option<String>,
     /// The verification level, which determines which users can chat in a guild.
     pub verification_level: VerificationLevel,
     /// The MFA authentication level for this guild.
     pub mfa_level: MfaLevel,
-    /// Whether or not the guild can be embedded in a widget.
-    pub embed_enabled: bool,
-    /// The channel ID that an embed widget will be generated for.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub embed_channel_id: u64,
     /// The ID of the channel in which system messages are sent to.
-    #[serde(default)]
-    pub system_channel_id: Option<u64>,
+    pub system_channel_id: Option<String>,
     /// The time that this guild was joined.
     pub joined_at: DateTime<FixedOffset>,
     /// Whether this guild is considered a large guild by Discord.
@@ -74,8 +72,7 @@ pub struct Guild {
     /// Whether or not the server widget is enabled.
     pub widget_enabled: bool,
     /// The ID of the guild's widget channel, if one exists.
-    #[serde(default)]
-    pub widget_channel_id: Option<u64>,
+    pub widget_channel_id: Option<String>,
     /// The default message notification setting for this guild.
     pub default_message_notifications: DefaultMessageNotifications,
     /// A collection of guild voice states.

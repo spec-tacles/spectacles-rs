@@ -1,3 +1,5 @@
+//! Structs representing the various elements of the Discord gateway.
+
 use crate::guild::UnavailableGuild;
 use crate::presence::Activity;
 use crate::User;

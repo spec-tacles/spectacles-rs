@@ -59,6 +59,26 @@ pub struct Message {
     pub application: MessageApplication,
 }
 
+/// Represents an attachment sent by a user.
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct MessageAttachment {
+    /// The attachment ID.
+    #[serde(default, deserialize_with = "parse_snowflake")]
+    pub id: u64,
+    /// The name of the file attached.
+    pub filename: String,
+    /// The size of the file in bytes.
+    pub size: i32,
+    /// The source URL of the file.
+    pub url: String,
+    /// A proxied URL of the file.
+    pub proxy_url: String,
+    /// The height of the file, if it is an image.
+    pub height: Option<i32>,
+    /// The width of the file, if it is an image.
+    pub width: Option<i32>
+
+}
 /// A Rich Presence Message activity.
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct MessageActivity {
