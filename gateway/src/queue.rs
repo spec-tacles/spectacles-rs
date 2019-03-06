@@ -72,6 +72,7 @@ pub trait ReconnectQueue {
     fn pop_front(&mut self) -> Box<Future<Item = Option<u64>, Error = Self::Error> + Send>;
 }
 
+#[derive(Clone)]
 pub struct ShardQueue {
     pub queue: VecDeque<u64>,
 }

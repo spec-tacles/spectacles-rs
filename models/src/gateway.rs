@@ -1,4 +1,7 @@
 //! Structs representing the various elements of the Discord gateway.
+use std::fmt::{Display, Formatter, Result as FmtResult};
+
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::guild::UnavailableGuild;
 use crate::presence::Activity;
@@ -26,14 +29,16 @@ pub struct SessionStartLimit {
 }
 
 /// A JSON packet that the client would receive over the Discord gateway.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ReceivePacket {
-    /// The op code for this payload.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ReceivePacket<'a> {
+    /// The opcode for this payload.
     pub op: Opcodes,
     /// The JSON value for this payload.
-    pub d: serde_json::Value,
-    pub s: u64,
-    pub t: GatewayEvent,
+    #[serde(borrow)]
+    pub d: &'a serde_json::value::RawValue,
+    pub s: Option<u64>,
+    /// The name of the event that was fired, if applicable.
+    pub t: Option<GatewayEvent>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -80,7 +85,8 @@ pub struct UpdateStatus {
 }
 
 /// A List of possible status types.
-#[derive(Debug, Clone)]
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone)]
+#[repr(u8)]
 pub enum StatusType {
     Online,
     DnD,
@@ -131,88 +137,54 @@ pub struct ResumedPacket {
 
 }
 #[derive(Debug, Deserialize, Serialize, Clone)]
+#[allow(non_camel_case_types)]
 /// An organized list of Discord gateway events.
 pub enum GatewayEvent {
-    Hello,
-    Ready,
-    Resumed,
-    InvalidSession,
-    ChannelCreate,
-    ChannelUpdate,
-    ChannelDelete,
-    ChannelPinsUpdate,
-    GuildCreate,
-    GuildUpdate,
-    GuildDelete,
-    GuildBanAdd,
-    GuildBanRemove,
-    GuildEmojisUpdate,
-    GuildIntegrationsUpdate,
-    GuildMemberAdd,
-    GuildMemberRemove,
-    GuildMemberUpdate,
-    GuildMembersChunk,
-    GuildRoleCreate,
-    GuildRoleUpdate,
-    GuildRoleDelete,
-    MessageCreate,
-    MessageUpdate,
-    MessageDelete,
-    MessageDeleteBulk,
-    MessageReactionAdd,
-    MessageReactionRemove,
-    MessageReactionRemoveAll,
-    PresenceUpdate,
-    TypingStart,
-    UserUpdate,
-    VoiceStateUpdate,
-    VoiceServerUpdate,
-    WebhooksUpdate
+    HELLO,
+    READY,
+    RESUMED,
+    INVALID_SESSION,
+    CHANNEL_CREATE,
+    CHANNEL_UPDATE,
+    CHANNEL_DELETE,
+    CHANNEL_PINS_UPDATE,
+    GUILD_CREATE,
+    GUILD_UPDATE,
+    GUILD_DELETE,
+    GUILD_BAN_ADD,
+    GUILD_BAN_REMOVE,
+    GUILD_EMOJIS_UPDATE,
+    GUILD_INTEGRATIONS_UPDATE,
+    GUILD_MEMBER_ADD,
+    GUILD_MEMBER_REMOVE,
+    GUILD_MEMBER_UPDATE,
+    GUILD_MEMBERS_CHUNK,
+    GUILD_ROLE_CREATE,
+    GUILD_ROLE_UPDATE,
+    GUILD_ROLE_DELETE,
+    MESSAGE_CREATE,
+    MESSAGE_UPDATE,
+    MESSAGE_DELETE,
+    MESSAGE_DELETE_BULK,
+    MESSAGE_REACTION_ADD,
+    MESSAGE_REACTION_REMOVE,
+    MESSAGE_REACTION_REMOVE_ALL,
+    PRESENCE_UPDATE,
+    TYPING_START,
+    USER_UPDATE,
+    VOICE_STATE_UPDATE,
+    VOICE_SERVER_UPDATE,
+    WEBHOOKS_UPDATE
 }
 
-impl GatewayEvent {
-    fn to_str(&self) -> &str {
-        match *self {
-            GatewayEvent::Hello => "HELLO",
-            GatewayEvent::Ready => "READY",
-            GatewayEvent::Resumed => "RESUMED",
-            GatewayEvent::InvalidSession => "INVALID_SESSION",
-            GatewayEvent::ChannelCreate => "CHANNEL_CREATE",
-            GatewayEvent::ChannelUpdate => "CHANNEL_UPDATE",
-            GatewayEvent::ChannelDelete => "CHANNEL_DELETE",
-            GatewayEvent::ChannelPinsUpdate => "CHANNEL_PINS_UPDATE",
-            GatewayEvent::GuildCreate => "GUILD_CREATE",
-            GatewayEvent::GuildUpdate => "GUILD_UPDATE",
-            GatewayEvent::GuildDelete => "GUILD_DELETE",
-            GatewayEvent::GuildBanAdd => "GUILD_BAN_ADD",
-            GatewayEvent::GuildBanRemove => "GUILD_BAN_REMOVE",
-            GatewayEvent::GuildEmojisUpdate => "GUILD_EMOJIS_UPDATE",
-            GatewayEvent::GuildIntegrationsUpdate => "GUILD_INTEGRATIONS_UPDATE",
-            GatewayEvent::GuildMemberAdd => "GUILD_MEMBER_ADD",
-            GatewayEvent::GuildMemberUpdate => "GUILD_MEMBER_UPDATE",
-            GatewayEvent::GuildMemberRemove => "GUILD_MEMBER_REMOVE",
-            GatewayEvent::GuildMembersChunk => "GUILD_MEMBERS_CHUNK",
-            GatewayEvent::GuildRoleCreate => "GUILD_ROLE_CREATE",
-            GatewayEvent::GuildRoleUpdate => "GUILD_ROLE_UPDATE",
-            GatewayEvent::GuildRoleDelete => "GUILD_ROLE_DELETE",
-            GatewayEvent::MessageCreate => "MESSAGE_CREATE",
-            GatewayEvent::MessageUpdate => "MESSAGE_UPDATE",
-            GatewayEvent::MessageDelete => "MESSAGE_DELETE",
-            GatewayEvent::MessageDeleteBulk => "MESSAGE_DELETE_BULK",
-            GatewayEvent::MessageReactionAdd => "MESSAGE_REACTION_ADD",
-            GatewayEvent::MessageReactionRemove => "MESSAGE_REACTION_REMOVE",
-            GatewayEvent::MessageReactionRemoveAll => "MESSAGE_REACTION_REMOVE_ALL",
-            GatewayEvent::PresenceUpdate => "PRESENCE_UPDATE",
-            GatewayEvent::TypingStart => "TYPING_START",
-            GatewayEvent::UserUpdate => "USER_UPDATE",
-            GatewayEvent::VoiceStateUpdate => "VOICE_STATE_UPDATE",
-            GatewayEvent::VoiceServerUpdate => "VOICE_SERVER_UPDATE",
-            GatewayEvent::WebhooksUpdate => "WEBHOOKS_UPDATE"
-        }
+impl Display for GatewayEvent {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "{:?}", self)
     }
 }
 /// A set of possible Discord gateway opcodes.
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone)]
+#[repr(u8)]
 pub enum Opcodes {
     /// Dispatches a gateway event.
     Dispatch,
@@ -225,7 +197,7 @@ pub enum Opcodes {
     /// Used to join and leave voice channels.
     VoiceStatusUpdate,
     /// Used to resume a closed connection.
-    Resume,
+    Resume = 6,
     /// Tells clients to reconnect to the gateway.
     Reconnect,
     /// used to request guild members.
@@ -239,7 +211,8 @@ pub enum Opcodes {
 }
 
 /// Codes that denote the cause of the gateway closing.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Deserialize_repr, Clone)]
+#[repr(u16)]
 pub enum CloseCodes {
     /// The cause of the error is unknown.
     UnknownError = 4000,

@@ -1,5 +1,3 @@
-//! This library provides an interface to the Spectacles Gateway.
-
 #[macro_use] extern crate log;
 #[macro_use] extern crate serde_json;
 
@@ -26,5 +24,7 @@ where H: EventHandler + Send + Sync
 /// The event handler trait, useful for receiving events from the websocket.
 pub trait EventHandler {
     /// Executed whenever a raw packet is received.
-    fn on_packet(&self, shard_id: u64, pkt: ReceivePacket) -> Box<futures::Future<Item = (), Error = ()>>;
+    fn on_packet(&self, _shard: Shard, _pkt: ReceivePacket) -> Box<futures::Future<Item = (), Error = ()> + Send> {
+        Box::new(futures::future::ok(()))
+    }
 }

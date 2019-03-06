@@ -20,6 +20,7 @@ pub enum Error {
     Tungstenite(TungsteniteError),
     Json(JsonError),
     Reqwest(ReqwestError),
+    InvalidTokenError,
     Io(IoError),
     TungsteniteSend(SendError<TungsteniteMessage>)
 }
@@ -38,6 +39,8 @@ impl StdError for Error {
             Error::Io(e) => e.description(),
             Error::TungsteniteSend(e) => e.description(),
             Error::Json(e) => e.description(),
+            Error::InvalidTokenError =>
+                "The token provided was not accepted by Discord. Please check that your token is correct and try again."
         }
     }
 }
@@ -56,7 +59,14 @@ impl From<IoError> for Error {
 
 impl From<ReqwestError> for Error {
     fn from(err: ReqwestError) -> Self {
-        Error::Reqwest(err)
+        if let Some(t) = err.status() {
+            match t.as_u16() {
+                401 => Error::InvalidTokenError,
+                _ => Error::Reqwest(err)
+            }
+        } else {
+            Error::Reqwest(err)
+        }
     }
 }
 

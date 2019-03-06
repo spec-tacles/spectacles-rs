@@ -30,6 +30,7 @@ use crate::EventHandler;
 use crate::ManagerOptions;
 
 /// The strategy in which you would like to spawn shards.
+#[derive(Clone)]
 pub enum ShardStrategy {
     /// The spawner will automatically spawn shards based on the amount recommended by Discord.
     Recommended,
@@ -37,18 +38,19 @@ pub enum ShardStrategy {
     SpawnAmount(u64)
 }
 pub type ShardMap = HashMap<u64, Arc<Mutex<Shard>>>;
+pub type MessageStream = UnboundedReceiver<(Arc<Mutex<Shard>>, TungsteniteMessage)>;
 /// An organized group of Discord gateway shards.
 pub struct ShardManager<H: EventHandler + Send + Sync + 'static> {
     /// The token that this shard uses to connect to the Discord API.
     pub token: String,
     /// The options used to configure this shard manager.
-    pub options: ManagerOptions<H>,
+    pub options: Option<ManagerOptions<H>>,
     /// A collection of shards that have been spawned.
     pub shards: Arc<RwLock<ShardMap>>,
     queue_sender: MpscSender<u64>,
     queue_receiver: Option<MpscReceiver<u64>>,
     reconnect_queue: ShardQueue,
-    message_stream: Option<UnboundedReceiver<(Arc<Mutex<Shard>>, TungsteniteMessage)>>,
+    message_stream: Option<MessageStream>,
 }
 
 impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
@@ -75,7 +77,7 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
                     token,
                     reconnect_queue: ShardQueue::new(shard_count as usize),
                     queue_sender,
-                    options,
+                    options: Some(options),
                     queue_receiver: Some(queue_receiver),
                     message_stream: None,
                     shards: Arc::new(RwLock::new(HashMap::new())),
@@ -84,7 +86,7 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
     }
 
     /// Spawns shards up to the specified amount and identifies them with Discord.
-    pub fn spawn(&mut self) -> Box<Future<Item = (), Error = Error> + Send> {
+    pub fn spawn(&mut self) -> impl Future<Item = (), Error = Error> + Send {
         let shard_count = self.reconnect_queue.queue.capacity() as u64;
         info!("[Manager] Attempting to spawn {} shards.", &shard_count);
         for i in 0..shard_count {
@@ -100,6 +102,20 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
         let token = self.token.clone();
         let newsender = sender.clone();
         let shards = self.shards.clone();
+
+        let message_stream = self.message_stream.take().unwrap();
+        let opts = self.options.take().unwrap();
+        tokio::spawn(message_stream.for_each(move |(mut shard, message)| {
+            let current_shard = shard.borrow_mut();
+            let mut shard = current_shard.lock().clone();
+            trace!("Websocket message received: {:?}", &message.clone());
+            let event = shard.resolve_packet(&message).expect("Failed to parse the shard message.");
+
+            shard.fufill_gateway(event)
+                .and_then(|pkt| opts.handler.on_packet(shard, pkt))
+                .and_then(|_| futures::future::ok(()))
+        }));
+
         tokio::spawn(self.reconnect_queue.pop_front()
             .and_then(move |shard| {
                 let shard = shard.expect("Shard queue is empty.");
@@ -107,81 +123,16 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
                 futures::future::ok(())
             })
             .map_err(|_| error!("Failed to pop shard in reconnect queue."))
-            .and_then(move |_| Self::receive_chan(
+            .and_then(move |_| receive_chan(
                 receiver,
                 token,
                 shard_count,
                 newsender,
-                shards
+                shards,
             ))
         );
 
         Box::new(futures::future::ok(()))
-    }
-
-    pub fn process_events(self) -> impl Future<Item = (), Error = ()> + 'static {
-        let messages = self.message_stream.unwrap();
-        let handler = self.options.handler;
-        messages.for_each(move |(mut shard, message)| {
-            let mut shard = shard.borrow_mut().lock();
-            let event = shard.resolve_packet(&message).expect("Failed to parse the shard message.");
-            match event.op {
-                Opcodes::Dispatch => handler.on_packet(shard.info[0], event),
-                _ => shard.fufill_gateway(event)
-            }
-        })
-    }
-
-    fn receive_chan(
-        receiver: MpscReceiver<u64>,
-        token: String,
-        shardcount: u64,
-        sender: UnboundedSender<(Arc<Mutex<Shard>>, TungsteniteMessage)>,
-        shardmap: Arc<RwLock<ShardMap>>
-    ) -> impl Future<Item = (), Error = ()> {
-        receiver.for_each(move |shard_id| {
-            trace!("[Manager] Received notification to shart Shard {}.", shard_id);
-            let shardmap = shardmap.clone();
-            let token = token.clone();
-            let sender = sender.clone();
-            Delay::new(Instant::now() + Duration::from_secs(5))
-                .map_err(|err| error!("Failed to pause before spawning the next shard. {:?}", err))
-                .and_then(move |_| {
-                    tokio::spawn(Self::create_shard(token, [shard_id, shardcount], sender)
-                        .map(move |shard| {
-                            shardmap.write().insert(shard_id, shard);
-                        })
-                    );
-                    futures::future::ok(())
-                })
-        }).map_err(|_| ())
-    }
-
-    fn create_shard(
-        token: String,
-        info: [u64; 2],
-        sender: UnboundedSender<(Arc<Mutex<Shard>>, TungsteniteMessage)>
-    ) -> impl Future<Item = Arc<Mutex<Shard>>, Error = ()> {
-        Shard::new(token.clone(), info)
-            .and_then(|res| {
-                use tokio::runtime::current_thread;
-                let shard = Arc::new(Mutex::new(res));
-                let sink = MessageSink {
-                    shard: shard.clone(),
-                    sender,
-                };
-                tokio::spawn(Box::new(shard.lock()
-                    .stream.lock().take()
-                    .unwrap()
-                    .map_err(MessageSinkError::from)
-                    .forward(sink)
-                    .map(|_| ())
-                    .map_err(|e| error!("[Manager] Failed to forward shard messages to the sink. {:?}", e)))
-                );
-                futures::future::ok(shard)
-            })
-            .map_err(move |err| error!("[Manager] Failed to start Shard {}. {:?}", info[0], err))
-
     }
 
     /*
@@ -191,4 +142,54 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
     }
     */
 
+}
+
+fn receive_chan(
+    receiver: MpscReceiver<u64>,
+    token: String,
+    shardcount: u64,
+    sender: UnboundedSender<(Arc<Mutex<Shard>>, TungsteniteMessage)>,
+    shardmap: Arc<RwLock<ShardMap>>,
+) -> impl Future<Item = (), Error = ()> {
+    receiver.for_each(move |shard_id| {
+        trace!("[Manager] Received notification to shart Shard {}.", shard_id);
+        let shardmap = shardmap.clone();
+        let token = token.clone();
+        let sender = sender.clone();
+        Delay::new(Instant::now() + Duration::from_secs(5))
+            .map_err(|err| error!("Failed to pause before spawning the next shard. {:?}", err))
+            .and_then(move |_| {
+                tokio::spawn(create_shard(token, [shard_id, shardcount], sender)
+                    .map(move |shard| {
+                        shardmap.write().insert(shard_id, shard);
+                    })
+                );
+                futures::future::ok(())
+            })
+    }).map_err(|_| ())
+}
+
+fn create_shard(
+    token: String,
+    info: [u64; 2],
+    sender: UnboundedSender<(Arc<Mutex<Shard>>, TungsteniteMessage)>,
+) -> impl Future<Item = Arc<Mutex<Shard>>, Error = ()> {
+    Shard::new(token.clone(), info)
+        .map_err(move |err| error!("[Manager] Failed to start Shard {}. {:?}", info[0], err))
+        .and_then(|res| {
+            let shard = Arc::new(Mutex::new(res));
+            let sink = MessageSink {
+                shard: shard.clone(),
+                sender,
+            };
+            tokio::spawn(Box::new(shard.lock()
+                .stream.lock().take()
+                .unwrap()
+                .map_err(MessageSinkError::from)
+                .forward(sink)
+                .map(|_| ())
+                .map_err(|e| error!("[Manager] Failed to forward shard messages to the sink. {:?}", e)))
+            );
+            futures::future::ok(shard)
+        })
 }
