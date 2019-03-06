@@ -1,4 +1,5 @@
 /target
+/tester
 **/*.rs.bk
 .idea/
 Cargo.lock

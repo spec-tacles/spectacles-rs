@@ -1,11 +1,21 @@
 //! Structs representing the various elements of the Discord gateway.
 use std::fmt::{Display, Formatter, Result as FmtResult};
-
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::guild::UnavailableGuild;
 use crate::presence::Activity;
 use crate::User;
+
+pub trait EventPayload {
+    fn new() -> Vec<u8>;
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+/// A JSON packet that the client would send over the Discord Gateway.
+pub struct SendPacket<T: EventPayload> {
+    op: Opcodes,
+    d: T
+}
 
 /// Returns useful information about the application from the gateway.
 #[derive(Serialize, Deserialize, Debug)]
@@ -28,24 +38,21 @@ pub struct SessionStartLimit {
     pub reset_after: i32,
 }
 
+/// A JSON packet used to send a heartbeat to the gateway.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HeartbeatPacket {
+
+}
 /// A JSON packet that the client would receive over the Discord gateway.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ReceivePacket<'a> {
+pub struct ReceivePacket<T: EventPayload> {
     /// The opcode for this payload.
     pub op: Opcodes,
     /// The JSON value for this payload.
-    #[serde(borrow)]
-    pub d: &'a serde_json::value::RawValue,
+    pub d: T,
     pub s: Option<u64>,
     /// The name of the event that was fired, if applicable.
     pub t: Option<GatewayEvent>
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-/// A JSON packet that the client would send over the Discord Gateway.
-pub struct SendPacket {
-    op: Opcodes,
-    d: serde_json::Value
 }
 
 /// A JSON packet which defines the heartbeat the client should adhere to.
@@ -64,6 +71,19 @@ pub struct RequestGuildMembers {
     query: String,
     /// The maximum number of members to send. If omitted, requests all members.
     limit: i32
+}
+
+impl EventPayload for RequestGuildMembers {
+    fn new() -> Vec<u8> {
+        SendPacket {
+            op: Opcodes::RequestGuildMembers,
+            d: RequestGuildMembers {
+                guild_id: String,
+                query: String
+            }
+        }
+
+    }
 }
 
 /// An Update Voice State packet.

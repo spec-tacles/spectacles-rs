@@ -8,6 +8,7 @@ use std::{
 use futures::sync::mpsc::SendError;
 use reqwest::Error as ReqwestError;
 use serde_json::Error as JsonError;
+use serde_eetf::Error as EtfError;
 use tokio_tungstenite::tungstenite::{
     Error as TungsteniteError,
     Message as TungsteniteMessage
@@ -22,6 +23,7 @@ pub enum Error {
     Reqwest(ReqwestError),
     InvalidTokenError,
     Io(IoError),
+    Etf(EtfError),
     TungsteniteSend(SendError<TungsteniteMessage>)
 }
 
@@ -36,6 +38,7 @@ impl StdError for Error {
         match self {
             Error::Reqwest(e) => e.description(),
             Error::Tungstenite(e) => e.description(),
+            Error::Etf(e) => e.description(),
             Error::Io(e) => e.description(),
             Error::TungsteniteSend(e) => e.description(),
             Error::Json(e) => e.description(),
@@ -79,5 +82,11 @@ impl From<SendError<TungsteniteMessage>> for Error {
 impl From<JsonError> for Error {
     fn from(err: JsonError) -> Self {
         Error::Json(err)
+    }
+}
+
+impl From<EtfError> for Error {
+    fn from(err: EtfError) -> Self {
+        Error::Etf(err)
     }
 }

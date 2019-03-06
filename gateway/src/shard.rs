@@ -28,13 +28,12 @@ use tokio_tungstenite::{
 use tokio_tungstenite::stream::Stream as TungsteniteStream;
 use url::Url;
 
-use spectacles_model::gateway::{GatewayEvent, Opcodes, ReadyPacket, ReceivePacket};
+use spectacles_model::gateway::{GatewayEvent, Opcodes, ReadyPacket, ReceivePacket, ResumedPacket};
 use spectacles_model::gateway::HelloPacket;
 
 use crate::{
     constants::{GATEWAY_URL, GATEWAY_VERSION},
-    errors::{Error, Result},
-    EventHandler,
+    errors::{Error, Result}
 };
 
 pub type ShardSplitStream = SplitStream<WebSocketStream<TungsteniteStream<TokioTcpStream, TlsStream<TokioTcpStream>>>>;
@@ -94,20 +93,20 @@ impl Shard {
             })
     }
 
-    pub fn fufill_gateway<'a>(&mut self, packet: ReceivePacket<'a>) -> Box<Future<Item = ReceivePacket<'a>, Error = ()> + Send> {
+    pub fn fufill_gateway<'a>(&mut self, packet: ReceivePacket) -> Box<Future<Item = (), Error = ()> + Send> {
         let info = self.info.clone();
         let current_state = self.current_state.lock().clone();
         match packet.op {
             Opcodes::Dispatch => {
                 if let Some(GatewayEvent::READY) = packet.t {
-                    let ready: ReadyPacket = serde_json::from_str(packet.d.get()).unwrap();
+                    let ready: ReadyPacket = serde_json::from_str(packet.d.as_ref()).unwrap();
                     *self.current_state.lock() = "connected".to_string();
                     self.session_id = Some(ready.session_id.clone());
                     trace!("[Shard {}] Received ready, set session ID as {}", &info[0], ready.session_id)
                 };
             }
             Opcodes::Hello => {
-                let hello: HelloPacket = serde_json::from_str(packet.d.get()).unwrap();
+                let hello: HelloPacket = serde_json::from_str(packet.d.as_ref()).unwrap();
                 if hello.heartbeat_interval > 0 {
                     self.interval = Some(hello.heartbeat_interval);
                 }
@@ -119,8 +118,7 @@ impl Shard {
                         warn!("[Shard {}] Failed to identify with gateway. {:?}", &info[0], e);
                     };
                 }
-                return Box::new(self.autoreconnect()
-                    .and_then(|_| Box::new(futures::future::ok(packet))).map_err(|_| ()));
+                return Box::new(self.autoreconnect().map_err(|_| ()))
             },
             Opcodes::HeartbeatAck => {
                 let mut hb = self.heartbeat.lock().clone();
@@ -128,7 +126,7 @@ impl Shard {
             }
             _ => {}
         };
-        Box::new(futures::future::ok(packet))
+        Box::new(futures::future::ok(()))
     }
 
     /// Identifies a shard with Discord.
@@ -152,7 +150,7 @@ impl Shard {
     /// Attempts to automatically reconnect the shard to Discord.
     pub fn autoreconnect(&mut self) -> Box<Future<Item = (), Error = Error> + Send>{
         if self.session_id.is_some() && self.heartbeat.lock().seq > 0 {
-            Box::new(self.resume())
+            // Box::new(self.resume())
         } else {
             Box::new(self.reconnect())
         }
@@ -161,39 +159,37 @@ impl Shard {
     /// Makes a request to reconnect the shard.
     pub fn reconnect(&mut self) -> impl Future<Item = (), Error = Error> + Send {
         info!("[Shard {}] Perfoming reconnect to gateway.", &self.info[0]);
-        let mut hb = self.heartbeat.lock();
-        hb.seq = 0;
-        *self.current_state.lock() = "connecting".to_string();
-        self.session_id = None;
+        *self.current_state.lock() = "reconnecting".to_string();
+        self.reset_state().expect(format!("[Shard {}] Failed to reset shard state.", self.info[0]).as_ref());
         self.dial_gateway()
     }
 
+    fn reset_state(&mut self) -> Result<()> {
+        *self.current_state.lock() = "disconnected".to_string();
+        self.session_id = None;
+        let mut hb = self.heartbeat.lock();
+        hb.seq = 0;
+
+        Ok(())
+    }
+
     /// Resumes a shard's past session.
-    pub fn resume(mut self) -> impl Future<Item = (), Error = Error> + Send {
-        let seq = self.heartbeat.lock().seq;
+    pub fn resume(&mut self) {
+        unimplemented!()
+        /*let seq = self.heartbeat.lock().seq;
         let token = self.token.clone();
         let state = self.current_state.clone();
         let session = self.session_id.clone();
 
         self.dial_gateway().then(move |result|{
-            if result.is_err() { return result };
-            *state.lock() = "resuming".to_string();
 
-            self.send_json(&json!({
-                "op": Opcodes::Resume as i32,
-                "d": {
-                    "session_id": session,
-                    "seq": seq,
-                    "token": token
-                }
-            }))
-        })
+        })*/
     }
     /// Resolves a Websocket message into a ReceivePacket struct.
-    pub fn resolve_packet<'a>(&self, mess: &'a WebsocketMessage) -> Result<ReceivePacket<'a>> {
+    pub fn resolve_packet(&self, mess: &WebsocketMessage) -> Result<ReceivePacket> {
         match mess {
-            WebsocketMessage::Binary(v) => serde_json::from_slice(v),
-            WebsocketMessage::Text(v) => serde_json::from_str(v),
+            WebsocketMessage::Binary(v) => serde_eetf::from_bytes(v),
+            WebsocketMessage::Text(v) => serde_eetf::from_bytes(v.as_bytes()),
             _ => unreachable!("Invalid type detected."),
         }.map_err(Error::from)
     }
@@ -208,6 +204,7 @@ impl Shard {
     fn heartbeat(&mut self) -> Result<()> {
         trace!("[Shard {}] Sending heartbeat.", self.info[0]);
         let seq = self.heartbeat.lock().seq;
+        let hb =
 
         self.send_json(&json!({
             "op": Opcodes::Heartbeat as i32,
@@ -251,6 +248,10 @@ impl Shard {
     fn send_json(&mut self, value: &serde_json::Value) -> Result<()> {
         let json = serde_json::to_string(value)?;
         self.send(WebsocketMessage::text(json))
+    }
+
+    fn send_binary(sender: &Arc<Mutex<UnboundedSender<WebsocketMessage>>>, value: Vec<u8>) -> Result<()> {
+        sender.lock().start_send(WebsocketMessage::Binary(value)).map(|_| ()).map_err(From::from)
     }
 
     fn begin_connection(ws: &str, shard_id: u64) -> impl Future<Item = (UnboundedSender<WebsocketMessage>, ShardSplitStream), Error = Error> {
