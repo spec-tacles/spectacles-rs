@@ -18,7 +18,7 @@ use parking_lot::{Mutex, RwLock};
 use tokio::timer::Delay;
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
-use spectacles_model::gateway::{GatewayBot, Opcodes, ReceivePacket};
+use spectacles_model::gateway::GatewayBot;
 
 use crate::{
     constants::API_BASE,
@@ -109,12 +109,7 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
             let current_shard = shard.borrow_mut();
             let mut shard = current_shard.lock().clone();
             trace!("Websocket message received: {:?}", &message.clone());
-            let event: ReceivePacket = shard.resolve_packet(&message).expect("Failed to parse the shard message.");
-            shard.fufill_gateway(event)
-
-            /*shard.fufill_gateway(event)
-                .and_then(|pkt| opts.handler.on_packet(shard, pkt))
-                .and_then(|_| futures::future::ok(()))*/
+            shard.fulfill_gateway(message)
         }));
 
         tokio::spawn(self.reconnect_queue.pop_front()

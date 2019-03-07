@@ -11,6 +11,7 @@ name = "spectacles_model"
 [dependencies]
 serde = "1.0.88"
 serde_derive = "1.0.89"
+serde-value = "0.5.3"
+serde_eetf = "0.1.0"
 chrono = { version = "0.4.6", features = ["serde"] }
-serde_json = { version = "1.0.38", features = ["raw_value"] }
 serde_repr = "0.1"
