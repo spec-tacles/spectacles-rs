@@ -3,5 +3,6 @@ members = [
     "broker/",
     "gateway/",
     "rest/",
-    "models/"
+    "models/",
+    "tester"
 ]

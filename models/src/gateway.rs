@@ -1,6 +1,6 @@
 //! Structs representing the various elements of the Discord gateway.
 use std::fmt::{Display, Formatter, Result as FmtResult};
-
+use std::collections::LinkedList;
 use serde_eetf::Error as EtfError;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_value::Value;
@@ -100,7 +100,7 @@ pub struct ReceivePacket {
     /// The opcode for this payload.
     pub op: Opcodes,
     /// The JSON value for this payload.
-    pub d: Value,
+    pub d: Vec<u8>,
     pub s: Option<u64>,
     /// The name of the event that was fired, if applicable.
     pub t: Option<GatewayEvent>
@@ -112,7 +112,7 @@ pub struct HelloPacket {
     /// The current heartbeat interval that the shard should follow.
     pub heartbeat_interval: u64,
     /// A debug-list of guilds that the user is in.
-    pub _trace: Vec<u64>
+    pub _trace: String
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

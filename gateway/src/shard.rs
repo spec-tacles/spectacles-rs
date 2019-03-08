@@ -2,14 +2,14 @@ use std::{
     io::{Error as IoError, ErrorKind},
     str::FromStr,
     sync::Arc,
-    time::{Duration, Instant}
+    time::{Duration, Instant},
 };
 
 use futures::{
     future::Future,
-    Sink,
     stream::{SplitStream, Stream},
-    sync::mpsc::{self, UnboundedSender}
+    sync::mpsc::{self, UnboundedSender},
+    Sink,
 };
 use native_tls::TlsConnector;
 use parking_lot::Mutex;
@@ -17,37 +17,29 @@ use tokio::net::TcpStream as TokioTcpStream;
 use tokio::timer::Interval;
 use tokio_dns::TcpStream;
 use tokio_tls::TlsStream;
+use tokio_tungstenite::stream::Stream as TungsteniteStream;
 use tokio_tungstenite::{
     tungstenite::{
-        Error as TungsteniteError,
         handshake::client::Request,
         protocol::{Message as WebsocketMessage, WebSocketConfig},
+        Error as TungsteniteError,
     },
-    WebSocketStream
+    WebSocketStream,
 };
-use tokio_tungstenite::stream::Stream as TungsteniteStream;
 use url::Url;
 
 use spectacles_model::gateway::{
-    EventPayload,
-    GatewayEvent,
-    HeartbeatPacket,
-    HelloPacket,
-    IdentifyPacket,
-    IdentifyProperties,
-    Opcodes,
-    ReadyPacket,
-    ReceivePacket,
-    ResumedPacket,
-    ResumeSessionPacket
+    EventPayload, GatewayEvent, HeartbeatPacket, HelloPacket, IdentifyPacket, IdentifyProperties,
+    Opcodes, ReadyPacket, ReceivePacket, ResumeSessionPacket, ResumedPacket,
 };
 
 use crate::{
     constants::{GATEWAY_URL, GATEWAY_VERSION},
-    errors::{Error, Result}
+    errors::{Error, Result},
 };
 
-pub type ShardSplitStream = SplitStream<WebSocketStream<TungsteniteStream<TokioTcpStream, TlsStream<TokioTcpStream>>>>;
+pub type ShardSplitStream =
+    SplitStream<WebSocketStream<TungsteniteStream<TokioTcpStream, TlsStream<TokioTcpStream>>>>;
 
 /// A Spectacles Gateway shard.
 #[derive(Clone)]
@@ -81,7 +73,7 @@ impl Heartbeat {
     fn new() -> Heartbeat {
         Self {
             acknowledged: false,
-            seq: 0
+            seq: 0,
         }
     }
 }
@@ -89,37 +81,41 @@ impl Heartbeat {
 impl Shard {
     /// Creates a new Discord Shard, with the provided token.
     pub fn new(token: String, info: [u64; 2]) -> impl Future<Item = Shard, Error = Error> {
-        Shard::begin_connection(GATEWAY_URL, info[0])
-            .map(move |(sender, stream)| {
-                Shard {
-                    token,
-                    session_id: None,
-                    info,
-                    interval: None,
-                    sender: Arc::new(Mutex::new(sender)),
-                    current_state: Arc::new(Mutex::new(String::from("handshake"))),
-                    stream: Arc::new(Mutex::new(Some(stream))),
-                    heartbeat: Arc::new(Mutex::new(Heartbeat::new()))
-                }
-            })
+        Shard::begin_connection(GATEWAY_URL, info[0]).map(move |(sender, stream)| Shard {
+            token,
+            session_id: None,
+            info,
+            interval: None,
+            sender: Arc::new(Mutex::new(sender)),
+            current_state: Arc::new(Mutex::new(String::from("handshake"))),
+            stream: Arc::new(Mutex::new(Some(stream))),
+            heartbeat: Arc::new(Mutex::new(Heartbeat::new())),
+        })
     }
 
-    pub fn fulfill_gateway(&mut self, mess: WebsocketMessage) -> Box<Future<Item = (), Error = ()> + Send> {
+    pub fn fulfill_gateway(
+        &mut self,
+        mess: WebsocketMessage,
+    ) -> Box<Future<Item = (), Error = ()> + Send> {
         let info = self.info.clone();
         let current_state = self.current_state.lock().clone();
-        let packet = self.resolve_packet(&mess).unwrap();
+        let packet: ReceivePacket = self.resolve_packet(&mess).unwrap();
 
         match packet.op {
             Opcodes::Dispatch => {
                 if let Some(GatewayEvent::READY) = packet.t {
-                    let ready: ReadyPacket = packet.d.deserialize_into().unwrap();
+                    let ready: ReadyPacket = serde_eetf::from_bytes(packet.d.as_slice()).unwrap();
                     *self.current_state.lock() = "connected".to_string();
                     self.session_id = Some(ready.session_id.clone());
-                    trace!("[Shard {}] Received ready, set session ID as {}", &info[0], ready.session_id)
+                    trace!(
+                        "[Shard {}] Received ready, set session ID as {}",
+                        &info[0],
+                        ready.session_id
+                    )
                 };
             }
             Opcodes::Hello => {
-                let hello: HelloPacket = packet.d.deserialize_into().unwrap();
+                let hello: HelloPacket = serde_eetf::from_bytes(packet.d.as_slice()).unwrap();
                 if hello.heartbeat_interval > 0 {
                     self.interval = Some(hello.heartbeat_interval);
                 }
@@ -128,11 +124,14 @@ impl Shard {
                     tokio::spawn(Shard::begin_interval(self.clone(), dur));
                     trace!("[Shard {}] Identifying with the gateway.", &info[0]);
                     if let Err(e) = self.identify() {
-                        warn!("[Shard {}] Failed to identify with gateway. {:?}", &info[0], e);
+                        warn!(
+                            "[Shard {}] Failed to identify with gateway. {:?}",
+                            &info[0], e
+                        );
                     };
                 }
-                return Box::new(self.autoreconnect().map_err(|_| ()))
-            },
+                return Box::new(self.autoreconnect().map_err(|_| ()));
+            }
             Opcodes::HeartbeatAck => {
                 let mut hb = self.heartbeat.lock().clone();
                 hb.acknowledged = true;
@@ -145,23 +144,28 @@ impl Shard {
     /// Identifies a shard with Discord.
     pub fn identify(&mut self) -> Result<()> {
         let sender = self.sender.clone();
-        Shard::send_binary(&sender, IdentifyPacket {
-            token: self.token.clone(),
-            shard: self.info.clone(),
-            version: GATEWAY_VERSION,
-            large_threshold: 250,
-            presence: None,
-            compress: false,
-            properties: IdentifyProperties {
-                os: std::env::consts::OS.to_string(),
-                browser: String::from("spectacles-rs"),
-                device: String::from("spectacles-rs")
+        Shard::send_binary(
+            &sender,
+            IdentifyPacket {
+                token: self.token.clone(),
+                shard: self.info.clone(),
+                version: GATEWAY_VERSION,
+                large_threshold: 250,
+                presence: None,
+                compress: false,
+                properties: IdentifyProperties {
+                    os: std::env::consts::OS.to_string(),
+                    browser: String::from("spectacles-rs"),
+                    device: String::from("spectacles-rs"),
+                },
             }
-        }.to_bytes().unwrap())
+            .to_bytes()
+            .unwrap(),
+        )
     }
 
     /// Attempts to automatically reconnect the shard to Discord.
-    pub fn autoreconnect(&mut self) -> Box<Future<Item = (), Error = Error> + Send>{
+    pub fn autoreconnect(&mut self) -> Box<Future<Item = (), Error = Error> + Send> {
         if self.session_id.is_some() && self.heartbeat.lock().seq > 0 {
             Box::new(self.resume())
         } else {
@@ -173,7 +177,8 @@ impl Shard {
     pub fn reconnect(&mut self) -> impl Future<Item = (), Error = Error> + Send {
         info!("[Shard {}] Perfoming reconnect to gateway.", &self.info[0]);
         *self.current_state.lock() = "reconnecting".to_string();
-        self.reset_state().expect(format!("[Shard {}] Failed to reset shard state.", self.info[0]).as_ref());
+        self.reset_state()
+            .expect(format!("[Shard {}] Failed to reset shard state.", self.info[0]).as_ref());
         self.dial_gateway()
     }
 
@@ -199,27 +204,33 @@ impl Shard {
                 return result;
             }
             *state.lock() = "resuming".to_string();
-            Shard::send_binary(&sender, ResumeSessionPacket {
-                token,
-                seq,
-                session_id: session.unwrap()
-            }.to_bytes().unwrap());
+            Shard::send_binary(
+                &sender,
+                ResumeSessionPacket {
+                    token,
+                    seq,
+                    session_id: session.unwrap(),
+                }
+                .to_bytes()
+                .unwrap(),
+            );
 
             Ok(())
         })
     }
     /// Resolves a Websocket message into a ReceivePacket struct.
     pub fn resolve_packet(&self, mess: &WebsocketMessage) -> Result<ReceivePacket> {
-        match mess {
-            WebsocketMessage::Binary(v) => serde_eetf::from_bytes(v),
-            WebsocketMessage::Text(v) => serde_eetf::from_bytes(v.as_bytes()),
-            _ => unreachable!("Invalid type detected."),
-        }.map_err(Error::from)
+        let res = mess.clone();
+        let res = res.into_data();
+        let s: ReceivePacket = serde_eetf::from_bytes(res.as_slice()).unwrap();
+        Ok(s)
     }
 
     /// Sends a payload to the Discord Gateway.
     pub fn send(&self, message: WebsocketMessage) -> Result<()> {
-        self.sender.lock().start_send(message)
+        self.sender
+            .lock()
+            .start_send(message)
             .map(|_| ())
             .map_err(From::from)
     }
@@ -228,9 +239,7 @@ impl Shard {
         trace!("[Shard {}] Sending heartbeat.", self.info[0]);
         let seq = self.heartbeat.lock().seq;
         let sender = self.sender.clone();
-        Shard::send_binary(&sender, HeartbeatPacket {
-            seq
-        }.to_bytes().unwrap())
+        Shard::send_binary(&sender, HeartbeatPacket { seq }.to_bytes().unwrap())
     }
 
     fn dial_gateway(&mut self) -> impl Future<Item = (), Error = Error> + Send {
@@ -241,21 +250,22 @@ impl Shard {
         let orig_stream = self.stream.clone();
         let heartbeat = self.heartbeat.clone();
 
-        Shard::begin_connection(GATEWAY_URL, info[0])
-            .map(move |(sender, stream)| {
-                *orig_sender.lock() = sender;
-                *heartbeat.lock() = Heartbeat::new();
-                *state.lock() = String::from("handshake");
-                *orig_stream.lock() = Some(stream);
-            })
+        Shard::begin_connection(GATEWAY_URL, info[0]).map(move |(sender, stream)| {
+            *orig_sender.lock() = sender;
+            *heartbeat.lock() = Heartbeat::new();
+            *state.lock() = String::from("handshake");
+            *orig_stream.lock() = Some(stream);
+        })
     }
-
 
     fn begin_interval(mut shard: Shard, duration: Duration) -> impl Future<Item = (), Error = ()> {
         let info = shard.info.clone();
         Interval::new(Instant::now(), duration)
             .map_err(move |err| {
-                warn!("[Shard {}] Failed to begin heartbeat interval. {:?}", info[0], err);
+                warn!(
+                    "[Shard {}] Failed to begin heartbeat interval. {:?}",
+                    info[0], err
+                );
             })
             .for_each(move |_| {
                 if let Err(r) = shard.heartbeat() {
@@ -266,11 +276,22 @@ impl Shard {
             })
     }
 
-    fn send_binary(sender: &Arc<Mutex<UnboundedSender<WebsocketMessage>>>, value: Vec<u8>) -> Result<()> {
-        sender.lock().start_send(WebsocketMessage::Binary(value)).map(|_| ()).map_err(From::from)
+    fn send_binary(
+        sender: &Arc<Mutex<UnboundedSender<WebsocketMessage>>>,
+        value: Vec<u8>,
+    ) -> Result<()> {
+        sender
+            .lock()
+            .start_send(WebsocketMessage::Binary(value))
+            .map(|_| ())
+            .map_err(From::from)
     }
 
-    fn begin_connection(ws: &str, shard_id: u64) -> impl Future<Item = (UnboundedSender<WebsocketMessage>, ShardSplitStream), Error = Error> {
+    fn begin_connection(
+        ws: &str,
+        shard_id: u64,
+    ) -> impl Future<Item = (UnboundedSender<WebsocketMessage>, ShardSplitStream), Error = Error>
+    {
         let url = Url::from_str(ws).expect("Invalid Websocket URL has been provided.");
         let req = Request::from(url);
         let (host, port) = Shard::get_addr_info(&req);
@@ -280,37 +301,58 @@ impl Shard {
         let socket = TcpStream::connect((host.as_ref(), port));
         let handshake = socket.and_then(move |socket| {
             info!("[Shard {}] Beginning handshake with gateway.", shard_id);
-            tlsconn.connect(host.as_ref(), socket)
+            tlsconn
+                .connect(host.as_ref(), socket)
                 .map(|s| TungsteniteStream::Tls(s))
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
         });
         let stream = handshake.and_then(|mut stream| {
-            tokio_tungstenite::stream::NoDelay::set_nodelay(&mut stream, true)
-                .map(move |()| stream)
+            tokio_tungstenite::stream::NoDelay::set_nodelay(&mut stream, true).map(move |()| stream)
         });
         let stream = stream.and_then(move |stream| {
-            tokio_tungstenite::client_async_with_config(req, stream, Some(WebSocketConfig {
-                max_message_size: Some(usize::max_value()),
-                max_frame_size: Some(usize::max_value()),
-                ..Default::default()
-            })).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+            tokio_tungstenite::client_async_with_config(
+                req,
+                stream,
+                Some(WebSocketConfig {
+                    max_message_size: Some(usize::max_value()),
+                    max_frame_size: Some(usize::max_value()),
+                    ..Default::default()
+                }),
+            )
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
         });
 
-        stream.map(move |(wstream, _)| {
-            let (tx, rx) = mpsc::unbounded();
-            let (sink, stream) = wstream.split();
-            tokio::spawn(rx.map_err(|err| {
-                error!("Failed to select sink. {:?}", err);
-                TungsteniteError::Io(IoError::new(ErrorKind::Other, "Error whilst attempting to select sink."))
-            }).forward(sink).map(|_| ()).map_err(|_| ()));
+        stream
+            .map(move |(wstream, _)| {
+                let (tx, rx) = mpsc::unbounded();
+                let (sink, stream) = wstream.split();
+                tokio::spawn(
+                    rx.map_err(|err| {
+                        error!("Failed to select sink. {:?}", err);
+                        TungsteniteError::Io(IoError::new(
+                            ErrorKind::Other,
+                            "Error whilst attempting to select sink.",
+                        ))
+                    })
+                    .forward(sink)
+                    .map(|_| ())
+                    .map_err(|_| ()),
+                );
 
-            (tx, stream)
-        }).from_err()
+                (tx, stream)
+            })
+            .from_err()
     }
 
     fn get_addr_info(req: &Request) -> (String, u16) {
-        let host = req.url.host_str().expect("Could Not parse the Websocket Host.");
-        let port = req.url.port_or_known_default().expect("Could not parse the websocket port.");
+        let host = req
+            .url
+            .host_str()
+            .expect("Could Not parse the Websocket Host.");
+        let port = req
+            .url
+            .port_or_known_default()
+            .expect("Could not parse the websocket port.");
 
         (host.to_string(), port)
     }
