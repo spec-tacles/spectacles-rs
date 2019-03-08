@@ -2,7 +2,7 @@
 name = "spectacles-gateway"
 description = "A Spectacles Gateway implementation for Rust."
 readme = "./README.md"
-version = "0.1.1"
+version = "0.5.0"
 authors = ["Texlo-Dev <richrancy@gmail.com>"]
 repository = "https://github.com/spec-tacles/spectacles-rs"
 edition = "2018"

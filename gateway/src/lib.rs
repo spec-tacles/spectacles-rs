@@ -1,5 +1,49 @@
+//! A rich Spectacles Gateway client for Rust.
+//!
+//! ## Features
+//! - Asynchronous websocket message handling.
+//! - Zero-Downtime shard spawning.
+//! - Integrates seamlessly with the spectacles-brokers package.
+//!
+//!
+//! ## Example
+//! ```rust,norun
+//! #[macro_use] extern crate log;
+//! use std::env::var;
+//! use tokio::runtime::current_thread;
+//! use spectacles_gateway::{ShardManager, ShardStrategy, ManagerOptions, EventHandler, Shard};
+//! use spectacles_model::gateway::ReceivePacket;
+//! use futures::future::Future;
+//!
+//! fn main() {
+//!     env_logger::init();
+//!     let token = var("DISCORD_TOKEN").expect("No Discord Token was provided.");
+//!     // tokio.run() boostraps our Tokio application.
+//!     current_thread:run({
+//!         // calling new() here return a new instance of the shard manager.
+//!         ShardManager::new(token, ManagerOptions {
+//!             strategy: ShardStrategy::Recommended,
+//!             handler: Handler
+//!         })
+//!         .and_then(|mut manager| manager.spawn()) // Begins spawning of shards.
+//!         .map_err(|err| error!("An error occured while processing shards: {:?}", err))
+//!     });
+//! }
+//! /// Here we define our Handler struct, which we implement the EventHandler trait for.
+//! /// The on_packet() trait method will be called when a packet is received from the Discord gateway.
+//! struct Handler;
+//! impl EventHandler for Handler {
+//!      fn on_packet(&self, shard: &Shard, pkt: ReceivePacket) -> Box<Future<Item = (), Error = ()> + Send> {
+//!          println!("Received Gateway Packet from Shard {:?} - {:?}", shard.info, pkt);
+//!          // Do other things with message, such as sending it to a message broker.
+//!          Box::new(futures::future::ok(()))
+//!      }
+//!  }
+//! ```
+
 #[macro_use] extern crate log;
-#[macro_use] extern crate serde_json;
+
+#[warn(rust_2018_idioms)]
 
 pub use errors::{Error, Result};
 pub use manager::*;
@@ -24,7 +68,5 @@ where H: EventHandler + Send + Sync
 /// The event handler trait, useful for receiving events from the websocket.
 pub trait EventHandler {
     /// Executed whenever a raw packet is received.
-    fn on_packet(&self, _shard: Shard, _pkt: ReceivePacket) -> Box<futures::Future<Item = (), Error = ()> + Send> {
-        Box::new(futures::future::ok(()))
-    }
+    fn on_packet(&self, _shard: &Shard, _pkt: ReceivePacket);
 }

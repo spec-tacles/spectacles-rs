@@ -1,11 +1,19 @@
 //! Structs representing the various elements of the Discord gateway.
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
+use serde_json::Error as JsonError;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::guild::UnavailableGuild;
-use crate::presence::Activity;
-use crate::User;
+use crate::{
+    guild::UnavailableGuild,
+    presence::{Activity, Presence},
+    User
+};
+
+/// Denotes structs that can be sent to the gateway.
+pub trait SendablePacket {
+    fn to_json(self) -> Result<String, JsonError>;
+}
 
 /// Returns useful information about the application from the gateway.
 #[derive(Serialize, Deserialize, Debug)]
@@ -43,16 +51,71 @@ pub struct ReceivePacket<'a> {
 
 #[derive(Serialize, Deserialize, Debug)]
 /// A JSON packet that the client would send over the Discord Gateway.
-pub struct SendPacket {
-    op: Opcodes,
-    d: serde_json::Value
+pub struct SendPacket<T: SendablePacket> {
+    /// The opcode for this packet.
+    pub op: Opcodes,
+    /// The JSON data for this packet.
+    pub d: T
+}
+
+/// Used for identifying a shard with the gateway.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct IdentifyPacket {
+    /// The token this shard will use.
+    pub token: String,
+    /// The properties of the client.
+    pub properties: IdentifyProperties,
+    /// The version of the gateway to use.
+    #[serde(rename = "v")]
+    pub version: u8,
+    /// Whether or not to compress packets.
+    pub compress: bool,
+    /// The total number of members where the gateway will stop sending offline members in the guild member list.
+    pub large_threshold: i32,
+    /// Holds the sharding information for this shard.
+    pub shard: [u64; 2],
+    /// The initial presence of this shard.
+    pub presence: Option<Presence>
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct IdentifyProperties {
+    /// The client's operating system.
+    #[serde(rename = "$os")]
+    pub os: String,
+    /// The current name of the library.
+    #[serde(rename = "$browser")]
+    pub browser: String,
+    /// The current name of the library.
+    #[serde(rename = "$device")]
+    pub device: String
 }
 
 /// A JSON packet which defines the heartbeat the client should adhere to.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct HelloPacket {
+    /// The heartbeat interval that the shard should follow.
     pub heartbeat_interval: u64,
+    /// An array of the client's guilds, used for debugging.
     pub _trace: Vec<String>
+}
+
+/// A packet used to resume a gateway connection.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ResumeSessionPacket {
+    /// The client's session ID>
+    pub session_id: String,
+    /// The current sequence.
+    pub seq: u64,
+    /// The token of the client.
+    pub token: String
+}
+/// A JSON packet used to send a heartbeat to the gateway.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HeartbeatPacket {
+    /// The shard's last sequence number.
+    pub seq: u64
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -66,45 +129,67 @@ pub struct RequestGuildMembers {
     limit: i32
 }
 
+
 /// An Update Voice State packet.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateVoiceState {
-    guild_id: String,
-    channel_id: Option<String>,
+    /// The guild ID of the guild.
+    guild_id: u64,
+    /// The channel ID of the voice channel.
+    channel_id: Option<u64>,
+    /// Whether or not to mute the current user.
     self_mute: bool,
+    /// Whether or not to deafen the current user.
     self_deaf: bool
 }
 
+
+impl SendablePacket for IdentifyPacket {
+    fn to_json(self) -> Result<String, JsonError> {
+        serde_json::to_string(&SendPacket {
+            op: Opcodes::Identify,
+            d: self
+        })
+    }
+}
+
+impl SendablePacket for RequestGuildMembers {
+    fn to_json(self) -> Result<String, JsonError> {
+        serde_json::to_string(&SendPacket {
+            op: Opcodes::RequestGuildMembers,
+            d: self
+        })
+    }
+}
+
+impl SendablePacket for HeartbeatPacket {
+    fn to_json(self) -> Result<String, JsonError> {
+        serde_json::to_string(&SendPacket {
+            op: Opcodes::Heartbeat,
+            d: self
+        })
+    }
+}
+
+impl SendablePacket for ResumeSessionPacket {
+    fn to_json(self) -> Result<String, JsonError> {
+        serde_json::to_string(&SendPacket {
+            op: Opcodes::Resume,
+            d: self
+        })
+    }
+}
 /// A packet sent to indicate a status update.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateStatus {
+    /// Milliseconds since the client went idle.
     since: Option<i32>,
-    activity: Activity,
+    /// The activity object to set.
+    game: Option<Activity>,
+    /// The status object to set.
     status: String,
+    /// Whether or not the client is AFK.
     afk: bool
-}
-
-/// A List of possible status types.
-#[derive(Serialize_repr, Deserialize_repr, Debug, Clone)]
-#[repr(u8)]
-pub enum StatusType {
-    Online,
-    DnD,
-    Idle,
-    Invisible,
-    Offline
-}
-
-impl StatusType {
-    fn as_str(&self) -> &str {
-        match *self {
-            StatusType::Online => "online",
-            StatusType::DnD => "dnd",
-            StatusType::Idle => "idle",
-            StatusType::Invisible => "invisible",
-            StatusType::Offline => "offline"
-        }
-    }
 }
 
 /// The packet received when a client completes a handshake with the Discord gateway.
@@ -116,7 +201,7 @@ pub struct ReadyPacket {
     /// Information about the current user.
     pub user: User,
     /// An empty array of private channels.
-    pub private_channels: [u64; 0],
+    pub private_channels: [String; 0],
     /// The guilds that the user is currently in.
     /// This will be an array of UnavailableGuild objects.
     pub guilds: Vec<UnavailableGuild>,

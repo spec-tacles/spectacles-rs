@@ -15,6 +15,7 @@ use futures::{
     }
 };
 use parking_lot::{Mutex, RwLock};
+use tokio::runtime::current_thread;
 use tokio::timer::Delay;
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
@@ -102,21 +103,24 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
         let token = self.token.clone();
         let newsender = sender.clone();
         let shards = self.shards.clone();
-
         let message_stream = self.message_stream.take().unwrap();
         let opts = self.options.take().unwrap();
+
         tokio::spawn(message_stream.for_each(move |(mut shard, message)| {
             let current_shard = shard.borrow_mut();
             let mut shard = current_shard.lock().clone();
             trace!("Websocket message received: {:?}", &message.clone());
             let event = shard.resolve_packet(&message).expect("Failed to parse the shard message.");
-
-            shard.fufill_gateway(event)
-                .and_then(|pkt| opts.handler.on_packet(shard, pkt))
-                .and_then(|_| futures::future::ok(()))
+            if let Opcodes::Dispatch = event.op {
+                tokio::spawn({
+                    opts.handler.on_packet(&shard, event.clone());
+                    futures::future::ok(())
+                });
+            }
+            shard.fulfill_gateway(event)
         }));
 
-        tokio::spawn(self.reconnect_queue.pop_front()
+        current_thread::spawn(self.reconnect_queue.pop_front()
             .and_then(move |shard| {
                 let shard = shard.expect("Shard queue is empty.");
                 queue_sender.try_send(shard).expect("Failed to send starting shard.");
@@ -159,9 +163,10 @@ fn receive_chan(
         Delay::new(Instant::now() + Duration::from_secs(5))
             .map_err(|err| error!("Failed to pause before spawning the next shard. {:?}", err))
             .and_then(move |_| {
-                tokio::spawn(create_shard(token, [shard_id, shardcount], sender)
+                current_thread::spawn(create_shard(token, [shard_id, shardcount], sender)
                     .map(move |shard| {
                         shardmap.write().insert(shard_id, shard);
+                        info!("[Manager] Shard {} successfully spawned.", shard_id);
                     })
                 );
                 futures::future::ok(())
@@ -182,7 +187,7 @@ fn create_shard(
                 shard: shard.clone(),
                 sender,
             };
-            tokio::spawn(Box::new(shard.lock()
+            current_thread::spawn(Box::new(shard.lock()
                 .stream.lock().take()
                 .unwrap()
                 .map_err(MessageSinkError::from)

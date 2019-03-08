@@ -31,6 +31,7 @@ pub struct Embed {
     pub fields: Option<EmbedField>
 }
 
+/// An Embed Footer data object.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EmbedFooter {
     /// The text of this footer.
@@ -77,6 +78,7 @@ pub struct EmbedVideo {
     pub width: i32
 }
 
+/// Information about the embed's provider.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EmbedProvider {
     /// The name of the provider.
@@ -85,6 +87,7 @@ pub struct EmbedProvider {
     pub url: Option<String>
 }
 
+/// Information about the embed's author.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EmbedAuthor {
     /// The name of the author.
@@ -97,6 +100,7 @@ pub struct EmbedAuthor {
     pub proxy_icon_url: Option<String>
 }
 
+/// Represents an Embed Field object.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EmbedField {
     /// The name of the field.

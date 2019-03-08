@@ -1,11 +1,8 @@
-use crate::parse_snowflake;
-
 /// A Discord emote than can be used to react to messages.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Emoji {
     /// The ID of the emoji.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub id: u64,
+    pub id: String,
     /// The name of the emoji.
     pub name: String,
     /// The roles that the emoji is whitelisted to.

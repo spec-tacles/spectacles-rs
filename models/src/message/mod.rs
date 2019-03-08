@@ -1,24 +1,24 @@
 //! Structs related to Discord messages in a guild channel.
 use chrono::{DateTime, FixedOffset};
 
-use crate::{parse_snowflake, User};
 use crate::guild::GuildMember;
+use crate::User;
 
 pub use self::embed::*;
 pub use self::emoji::*;
+pub use self::webhook::Webhook;
 
 mod embed;
+mod webhook;
 mod emoji;
 
 /// A message sent in a channel on Discord.
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Message {
     /// The message ID of the message.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub id: u64,
+    pub id: String,
     /// The ID of the channel that the message was sent in.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub channel_id: u64,
+    pub channel_id: String,
     /// The ID of the guild that the message was sent in.
     pub guild_id: Option<String>,
     /// The author of the message.
@@ -38,19 +38,17 @@ pub struct Message {
     /// Roles that were mentioned in this message.
     pub mention_roles: Vec<String>,
     /// The message's attached files, if any.
-    pub attachments: Vec<u64>, // TODO: Type Attachment struct
+    pub attachments: Vec<MessageAttachment>,
     /// Any embeds sent with this message.
-    pub embeds: Vec<u64>, // TODO: Type Embed struct
+    pub embeds: Vec<Embed>,
     /// The message's reactions.
-    pub reactions: Vec<u64>, // TODO: Type MessageReaction struct,
+    pub reactions: Vec<MessageReaction>,
     /// A snowflake used to validate that a message was sent.
-    #[serde(default, deserialize_with = "parse_snowflake")]
-    pub nonce: u64,
+    pub nonce: String,
     /// Whether or not the message is pinned.
     pub pinned: bool,
     /// The ID of the webhook if the message was sent by a webhook.
-    #[serde(default, deserialize_with = "parse_snowflake")]
-    pub webhook_id: u64,
+    pub webhook_id: Option<String>,
     /// The type of message sent.
     pub r#type: MessageType,
     /// Message Activity sent with rich-presence embeds.
@@ -63,8 +61,7 @@ pub struct Message {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct MessageAttachment {
     /// The attachment ID.
-    #[serde(default, deserialize_with = "parse_snowflake")]
-    pub id: u64,
+    pub id: String,
     /// The name of the file attached.
     pub filename: String,
     /// The size of the file in bytes.
@@ -92,8 +89,7 @@ pub struct MessageActivity {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct MessageApplication {
     /// The ID of the application.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub id: u64,
+    pub id: String,
     /// The ID of the embeds's image.
     pub cover_image: String,
     /// The application description.

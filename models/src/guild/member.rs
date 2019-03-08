@@ -5,8 +5,6 @@ use crate::{
     user::User,
 };
 
-use super::parse_snowflake;
-
 /// A User that is part of a guild.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GuildMember {
@@ -23,6 +21,5 @@ pub struct GuildMember {
     pub deaf: bool,
     /// A collection of roles that this member has.
     pub roles: Vec<Role>,
-    #[serde(default, deserialize_with = "parse_snowflake")]
-    pub guild_id: u64
+    pub guild_id: String
 }

@@ -2,11 +2,12 @@
 use chrono::{DateTime, FixedOffset};
 
 use crate::{
+    channel::Channel,
     message::Emoji,
+    presence::Presence,
     User,
+    voice::VoiceState,
 };
-
-use super::parse_snowflake;
 
 pub use self::{
     member::GuildMember,
@@ -14,14 +15,14 @@ pub use self::{
 };
 
 mod role;
+mod audit_log;
 mod member;
 
 /// A Discord Guild, commonly referred to as a "server".
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct Guild {
     /// The snowflake ID of this guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub id: u64,
+    pub id: String,
     /// The name of the guild.
     pub name: String,
     /// The guild's icon hash. Will be a None value if one is not set.
@@ -31,7 +32,7 @@ pub struct Guild {
     /// Whether or not the user is an owner of the guild.
     pub owner: Option<bool>,
     /// The ID of the guild owner.
-    pub owner_id: u64,
+    pub owner_id: String,
     /// The permissions that the user has in this guild.
     pub permissions: Option<i32>,
     /// The region in which this guild is located.
@@ -39,8 +40,7 @@ pub struct Guild {
     /// The AFK channel ID for this guild.
     pub afk_channel_id: Option<String>,
     /// The AFK channel timeout for this guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub afk_timeout: u64,
+    pub afk_timeout: Option<String>,
     /// Whether or not the guild can be embedded in a widget.
     pub embed_enabled: Option<bool>,
     /// The channel ID that an embed widget will be generated for.
@@ -52,7 +52,7 @@ pub struct Guild {
     /// A collection of roles that belong to this guild.
     pub roles: Vec<Role>,
     /// A collection of emotes that belong to this guild.
-    pub emojis: Vec<u64>, // TODO: Define Emoji struct
+    pub emojis: Vec<Emoji>,
     /// The explicit content filter level for this guild.
     pub explicit_content_filter: ExplicitContentFilter,
     /// The ID of the application which created the guild, if applicable.
@@ -76,19 +76,18 @@ pub struct Guild {
     /// The default message notification setting for this guild.
     pub default_message_notifications: DefaultMessageNotifications,
     /// A collection of guild voice states.
-    pub voice_states: Vec<u64>, // TODO: Add Voice State struct
+    pub voice_states: Vec<VoiceState>,
     /// A collection of channels in this guild.
-    pub channels: Vec<u64>, // TODO: Add channel struct
+    pub channels: Vec<Channel>,
     /// A collection of presences in this guild.
-    pub presences: Vec<u64> // TODO: Add Presence struct
+    pub presences: Vec<Presence>
 }
 
 /// A Partial guild object, usually an offline guild.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UnavailableGuild {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub id: u64,
+    pub id: String,
     /// Whether or not the guild is available, usually set to true.
     pub unavailable: bool
 }
@@ -97,8 +96,7 @@ pub struct UnavailableGuild {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildBanAdd {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     /// The user who was banned.
     pub user: User
 }
@@ -107,8 +105,7 @@ pub struct GuildBanAdd {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildBanRemove {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     /// The user who was unbanned.
     pub user: User
 }
@@ -117,8 +114,7 @@ pub struct GuildBanRemove {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildEmojisUpdate {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     /// An array of Emoji objects.
     pub emojis: Vec<Emoji>,
 }
@@ -127,16 +123,14 @@ pub struct GuildEmojisUpdate {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildIntegrationsUpdate {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64
+    pub guild_id: String
 }
 
 /// Represents a packet sent when a user is removed from a guild.
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildMemberRemove {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     /// The user who was removed.
     pub user: User
 }
@@ -145,8 +139,7 @@ pub struct GuildMemberRemove {
 #[derive(Deserialize, Clone, Debug)]
 pub struct GuildMemberUpdate {
     /// The ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     pub roles: Vec<String>,
     /// The user who was updated.
     pub user: User,
@@ -158,8 +151,7 @@ pub struct GuildMemberUpdate {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildMembersChunk {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     /// An array of guild member objects.
     pub members: Vec<GuildMember>
 }
@@ -168,8 +160,7 @@ pub struct GuildMembersChunk {
 #[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleCreate {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     /// The newly created role.
     pub role: Role
 }
@@ -178,8 +169,7 @@ pub struct GuildRoleCreate {
 #[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleUpdate {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     /// The updated role.
     pub role: Role
 }
@@ -188,11 +178,9 @@ pub struct GuildRoleUpdate {
 #[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleDelete {
     /// The guild ID of the guild.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub guild_id: u64,
+    pub guild_id: String,
     /// The ID of the deleted role.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub role: u64
+    pub role: String
 }
 
 /// A guild's explicit content filter levels.

@@ -1,11 +1,8 @@
-use super::parse_snowflake;
-
 /// Represents a Discord Role.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Role {
     /// The snowflake ID of this role.
-    #[serde(deserialize_with = "parse_snowflake")]
-    pub id: u64,
+    pub id: String,
     /// The name of this role.
     pub name: String,
     /// The hexadecimal color code for this role.

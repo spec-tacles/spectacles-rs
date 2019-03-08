@@ -4,7 +4,6 @@ A rich Spectacles Gateway client for Rust.
 
 ## Features
 - Asynchronous websocket message handling.
-- Packets deserialized with ETF (External Term Format) for maximum efficiency.
 - Zero-Downtime shard spawning.
 - Integrates seamlessly with the spectacles-brokers package.
 
