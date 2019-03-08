@@ -18,7 +18,7 @@ pub struct AmqpBroker<H: MessageHandler + Send + Sync> {
     event_cb: H,
     /// The group used for consuming and producing messages.
     pub group: String,
-    /// The subgroup used for consuming and producting messages.
+    /// The subgroup used for consuming and producing messages.
     pub subgroup: Option<String>
 }
 
@@ -26,17 +26,28 @@ impl <H: MessageHandler + Send + Sync> AmqpBroker <H> {
     /// Creates a new AMQP-based message broker, with the provided address, groups, and a message handler struct.
     /// # Example
     /// ```rust,norun
-    ///     use spectacles_brokers::{AmqpBroker, MessageHandler};
+    /// use spectacles_brokers::{AmqpBroker, MessageHandler};
+    /// use std::net::SocketAddr;
+    /// use futures::Future;
     ///
-    ///     fn main() {
-    ///         let addr = std::env::var("AMPQ_ADDR").expect("No AMQP Address detected");
-    ///          let socketaddr: SocketAddr = addr.parse().expect("Failed to parse this AMQP Address.");
-    ///          tokio::run({
-    ///              AmqpBroker::new(&socketaddr, "gateway", None, MessageHandle)
-    ///              .and_then(|broker| broker.subscribe("MESSAGE_CREATE"))
-    ///              .and_then(|broker| broker.subscribe("GUILD_CREATE"))
-    ///          })
+    /// fn main() {
+    ///    let addr = std::env::var("AMPQ_ADDR").expect("No AMQP Address detected");
+    ///    let socketaddr: SocketAddr = addr.parse().expect("Failed to parse this AMQP Address.");
+    ///    tokio::run({
+    ///        AmqpBroker::new(&socketaddr, "gateway", None, Handler)
+    ///         // Here, we subscribe to out desired events.
+    ///         .and_then(|broker| broker.subscribe("MESSAGE_CREATE"))
+    ///         .and_then(|broker| broker.subscribe("GUILD_CREATE"))
+    ///    });
+    /// }
+    ///
+    /// // Here, we define our handler struct which will handle our messages.
+    /// struct Handler;
+    /// impl MessageHandler for Handler {
+    ///     fn on_message(&self, evt: &str, payload: String) {
+    ///         println!("Message Received! Event: {} - Payload: {}", evt, payload);
     ///     }
+    /// }
     /// ```
 
 
@@ -65,6 +76,26 @@ impl <H: MessageHandler + Send + Sync> AmqpBroker <H> {
     }
 
     /// Publishes a payload for the provided event to the message brokers.
+    /// # Example
+    /// ```rust,norun
+    /// use spectacles_brokers::{AmqpBroker, MessageHandler};
+    /// use std::net::SocketAddr;
+    /// use futures::Future;
+
+    /// fn main() {
+    ///     let addr = std::env::var("AMPQ_ADDR").expect("No AMQP Address detected");
+    ///     let socketaddr: SocketAddr = addr.parse().expect("Failed to parse this AMQP Address.");
+    ///     tokio::run({
+    ///         AmqpBroker::new(&socketaddr, "gateway", None, Handler)
+    ///          .and_then(|broker| {
+    ///             /// A sample JSON payload that represents a Gateway data packet.
+    ///             let payload = r#"{ "hello": "World" }"#;
+    ///             /// Here, we publish a message, with the event name as the group.
+    ///             broker.publish("EVENT_HERE", payload.to_string().as_bytes())
+    ///         })
+    ///     });
+    /// ```
+
     pub fn publish(&self, evt: &'static str, payload: Vec<u8>) -> impl Future<Item = Option<u64>, Error = Error> {
         info!("Publishing Event: {} to the Message brokers.", evt);
         self.channel.basic_publish(
