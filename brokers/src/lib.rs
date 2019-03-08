@@ -2,11 +2,12 @@
 #[macro_use] extern crate log;
 
 pub use amqp::AmqpBroker;
+pub use errors::Error;
 
 mod errors;
 mod amqp;
 
-/// Event handler for receiving messages from a message broker.
+/// Event handler for receiving messages from a message brokers.
 pub trait MessageHandler {
-    fn on_message(&self, payload: String);
+    fn on_message(&self, event: &str, payload: String);
 }

@@ -8,8 +8,6 @@ use std::{
 use failure::Fail;
 use lapin_futures::error::Error as LapinError;
 
-pub type Result<T> = StdResult<T, Error>;
-
 #[derive(Debug)]
 pub enum Error {
     Lapin(LapinError),
