@@ -3,3 +3,4 @@
 **/*.rs.bk
 .idea/
 Cargo.lock
+.env
