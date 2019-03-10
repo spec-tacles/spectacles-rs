@@ -24,7 +24,7 @@ fn main() {
         let json = r#"{"message": "Example Publish."}"#.as_bytes();
         broker.publish("HELLO", json.to_vec())
     });
-    let success = result.map(|| {
+    let success = result.map(|_| {
         println!("Message publish succeeded, check the other window!");
     }).map_err(|err| {
         eprintln!("An error was encountered during publish: {}", err);
