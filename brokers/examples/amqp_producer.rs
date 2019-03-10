@@ -9,7 +9,7 @@ use spectacles_brokers::AmqpBroker;
 // This example is meant to be ran with the consumer example provided in this folder.
 fn main() {
     let addr = var("AMQP_ADDR").expect("No AMQP server address found.");
-    let addr: SocketAddr = addr.parse();
+    let addr: SocketAddr = addr.parse().expect("Malformed URL provided, please try another URL.");
     // We will begin by initializing our AMQP broker struct.
     // Here, we pass in our socket address, the group (exchange) that the broker will adhere to.
     // You may also specify a subgroup, if you would like to differentiate multiple queues for the same event on the same exchange.
@@ -20,7 +20,7 @@ fn main() {
         let json = r#"{"message": "Example Publish."}"#.as_bytes();
         broker.publish("HELLO", json.to_vec())
     });
-    let success = result.map(|| {
+    let success = result.map(|_| {
         println!("Message publish succeeded, check the other window!");
     }).map_err(|err| {
         eprintln!("An error was encountered during publish: {}", err);
