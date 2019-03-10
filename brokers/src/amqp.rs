@@ -1,61 +1,76 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use futures::{future::Future, Stream};
 use lapin_futures::{
-    channel::{BasicConsumeOptions, BasicProperties, BasicPublishOptions, Channel, QueueDeclareOptions},
+    channel::{
+        BasicConsumeOptions,
+        BasicProperties,
+        BasicPublishOptions,
+        Channel,
+        ExchangeDeclareOptions,
+        QueueBindOptions,
+        QueueDeclareOptions
+    },
     client::{Client as AmqpClient, ConnectionOptions},
     types::FieldTable,
 };
 use tokio::net::TcpStream;
+use tokio::runtime::current_thread;
 
-use crate::{errors::Error, MessageHandler};
+use crate::errors::Error;
 
 /// Central AMQP message brokers client.
 #[derive(Clone)]
-pub struct AmqpBroker<H: MessageHandler + Send + Sync> {
+pub struct AmqpBroker {
     /// The AMQP channel used for processing messages.
-    pub channel: Channel<TcpStream>,
-    event_cb: H,
+    pub channel: Arc<Channel<TcpStream>>,
     /// The group used for consuming and producing messages.
     pub group: String,
-    /// The subgroup used for consuming and producting messages.
+    /// The subgroup used for consuming and producing messages.
     pub subgroup: Option<String>
 }
 
-impl <H: MessageHandler + Send + Sync> AmqpBroker <H> {
-    /// Creates a new AMQP-based message broker, with the provided address, groups, and a message handler struct.
+impl AmqpBroker {
+    /// Creates a new AMQP-based message broker, with the provided address, and groups.
     /// # Example
     /// ```rust,norun
-    ///     use spectacles_brokers::{AmqpBroker, MessageHandler};
+    /// use std::env::var;
+    /// use spectacles_brokers::AmqpBroker;
+    /// use std::net::SocketAddr;
+    /// use futures::future::future;
     ///
-    ///     fn main() {
-    ///         let addr = std::env::var("AMPQ_ADDR").expect("No AMQP Address detected");
-    ///          let socketaddr: SocketAddr = addr.parse().expect("Failed to parse this AMQP Address.");
-    ///          tokio::run({
-    ///              AmqpBroker::new(&socketaddr, "gateway", None, MessageHandle)
-    ///              .and_then(|broker| broker.subscribe("MESSAGE_CREATE"))
-    ///              .and_then(|broker| broker.subscribe("GUILD_CREATE"))
-    ///          })
-    ///     }
+    /// fn main() {
+    ///     let addr = var("AMQP_ADDR").expect("No AMQP Address has been provided.");
+    ///     let addr: SocketAddr = addr.parse().expect("Malformed URL provided.");
+    ///     tokio::run({
+    ///         AmqpBroker::new(&addr, "mygroup", None)
+    ///         .map(|broker| {
+    ///             /// Publish and subscribe to events here.
+    ///         });
+    ///     });
+    /// }
     /// ```
 
-
-    pub fn new(addr: &SocketAddr, group: &'static str, subgroup: Option<&'static str>, event_cb: H) -> impl Future<Item = AmqpBroker<H>, Error = Error> {
+    pub fn new<'a>(addr: &SocketAddr, group: &'a str, subgroup: Option<&'a str>) -> impl Future<Item = AmqpBroker, Error = Error> + 'a {
         TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
             AmqpClient::connect(stream, ConnectionOptions::default())
                 .map_err(Error::from)
         }).and_then(|(amqp, heartbeat)| {
             tokio::spawn(heartbeat.map_err(|_| ()));
             amqp.create_channel().map_err(Error::from)
-        }).map(move |channel| {
-            info!("Created AMQP Channel With ID: {}", &channel.id);
-
-            Self {
-                channel,
-                event_cb,
-                group: group.to_string(),
-                subgroup: subgroup.map(|g| g.to_string())
-            }
+        }).and_then(move |channel| {
+            debug!("Created AMQP Channel With ID: {}", &channel.id);
+            channel.exchange_declare(group, "direct", ExchangeDeclareOptions {
+                durable: true,
+                ..Default::default()
+            }, FieldTable::new()).map(move |_| {
+                Self {
+                    channel: Arc::new(channel),
+                    group: group.to_string(),
+                    subgroup: subgroup.map(|g| g.to_string())
+                }
+            }).map_err(Error::from)
         })
     }
 
@@ -65,8 +80,17 @@ impl <H: MessageHandler + Send + Sync> AmqpBroker <H> {
     }
 
     /// Publishes a payload for the provided event to the message brokers.
-    pub fn publish(&self, evt: &'static str, payload: Vec<u8>) -> impl Future<Item = Option<u64>, Error = Error> {
-        info!("Publishing Event: {} to the Message brokers.", evt);
+    /// You must serialize all payloads to a Vector of bytes.
+    /// # Example
+    /// ```rust,norun
+    /// AmqpBroker::new(&addr, "mygroup", None)
+    ///    .and_then(|broker| {
+    ///         broker.publish("MESSAGE_CREATE", "{"content": "Hi"}".as_bytes().to_vec());
+    ///     })
+    /// ```
+    ///
+    pub fn publish(&self, evt: &str, payload: Vec<u8>) -> impl Future<Item = Option<u64>, Error = Error> {
+        debug!("Publishing event: {} to the AMQP server.", evt);
         self.channel.basic_publish(
             self.group.as_ref(),
             evt,
@@ -76,32 +100,59 @@ impl <H: MessageHandler + Send + Sync> AmqpBroker <H> {
         ).map_err(Error::from)
     }
 
-    /// Subscribes to the provided event.
-    pub fn subscribe(&self, evt: &'static str) -> impl Future<Item = &AmqpBroker<H>, Error = Error> {
+    /// Subscribes to the provided event, with a callback that is called when an event is received.
+    /// # Example
+    /// ```rust,norun
+    /// AmqpBroker::new(&addr, "mygroup", None)
+    ///    .map(|broker| {
+    ///         broker.subscribe("MESSAGE_CREATE", |message| {
+    ///             println!("Message Event Received: {}");
+    ///         });
+    ///     })
+    /// ```
+    ///
+    pub fn subscribe<C: Fn(String) + 'static>(self, evt: &'static str, callback: C) -> Self {
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
             None => format!("{}:{}", self.group, evt)
         };
-
-        self.channel.queue_declare(
+        let channel = Arc::clone(&self.channel);
+        let future = channel.queue_declare(
             queue_name.as_str(),
             QueueDeclareOptions {
                 durable: true,
                 ..Default::default()
             },
             FieldTable::new()
-        ).and_then(move |queue| {
-            info!("Channel ID: {} has declared queue: {}", self.channel.id, queue_name);
-            self.channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new())
-        }).and_then(move |stream| {
-            info!("Consumer Stream Received.");
-            stream.for_each(move |message| {
-                debug!("Received Message: {:?}", message);
-                self.channel.basic_ack(message.delivery_tag, false);
+        ).and_then({
+            let channel = Arc::clone(&self.channel);
+            let group = self.group.clone();
+            move |queue| {
+                debug!("Channel ID: {} has declared queue: {}", channel.id, queue_name);
+                channel.queue_bind(
+                    queue_name.as_str(),
+                    group.as_ref(),
+                    evt,
+                    QueueBindOptions::default(),
+                    FieldTable::new()
+                ).and_then(move  |_| channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new()))
+            }
+        }).and_then({
+            let channel = Arc::clone(&self.channel);
+            move |stream| stream.for_each(move |message| {
+                debug!("Incoming message: {:?}", message);
+                tokio::spawn(channel.basic_ack(message.delivery_tag, false).map_err(|err| {
+                    error!("Failed to ACK message. {}", err);
+                }));
                 let decoded = std::str::from_utf8(&message.data).unwrap();
-                self.event_cb.on_message(evt, decoded.to_string());
-                Ok(())
+                callback(decoded.to_string());
+                futures::future::ok(())
             })
-        }).map(move |_| self.clone()).map_err(Error::from)
+        }).map_err(Error::from);
+        current_thread::spawn(future.map_err(move |err| {
+            error!("Error encountered on event: {} - {}", evt, err);
+        }));
+
+        self
     }
 }

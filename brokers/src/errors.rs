@@ -2,12 +2,12 @@ use std::{
     error::Error as StdError,
     fmt::{Display, Formatter, Result as FmtResult},
     io::Error as IoError,
-    result::Result as StdResult,
 };
 
 use failure::Fail;
 use lapin_futures::error::Error as LapinError;
 
+/// Details the various errors of the crate.
 #[derive(Debug)]
 pub enum Error {
     Lapin(LapinError),

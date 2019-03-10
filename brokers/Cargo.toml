@@ -1,7 +1,7 @@
 [package]
 name = "spectacles-brokers"
 description = "Message brokers which allow for powerful communication between spectacles services."
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Texlo-Dev <richrancy@gmail.com>"]
 repository = "https://github.com/spec-tacles/spectacles-rs"
 edition = "2018"
