@@ -18,7 +18,7 @@ jobs:
       - bash: |
           source $HOME/.cargo/env
           cargo build -p spectacles --release
-          zip spectacles.zip target/release/spectacles
+          tar -zcvf spectacles.tar.gz target/release/spectacles
         displayName: 'Build Spectacles'
 
       - task: GithubRelease@0
