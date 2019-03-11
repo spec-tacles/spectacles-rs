@@ -25,6 +25,6 @@ jobs:
         displayName: 'Package GitHub release'
         condition: startsWith(variables['Build.SourceBranch'], 'client/v')
         inputs:
-          githubConnection: spec-tacles
+          githubConnection: my-account
           repositoryName: spec-tacles-spectacles-rs
           assets: $(Build.ArtifactStagingDirectory)/*.zip
