@@ -20,6 +20,7 @@ jobs:
           &"$env:USERPROFILE\.cargo\bin\cargo" build -p spectacles --release
         displayName: 'Build Spectacles'
       - task: GithubRelease@0
+        displayName: 'Package GitHub release'
         inputs:
           githubConnection: spec-tacles
           repositoryName: spec-tacles-spectacles-rs
