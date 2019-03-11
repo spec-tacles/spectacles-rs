@@ -33,5 +33,5 @@ jobs:
           tagSource: 'manual'
           tag: '$(build.my_tag)'
           githubConnection: my-account
-          repositoryName: spec-tacles/spectacles-rs
+          repositoryName: 'spec-tacles/spectacles-rs'
           assets: $(Build.ArtifactStagingDirectory)/*.tar.gz
