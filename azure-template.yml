@@ -18,13 +18,21 @@ jobs:
       - bash: |
           source $HOME/.cargo/env
           cargo build -p spectacles --release
-          tar -zcvf spectacles.tar.gz target/release/spectacles
+          tar -zcvf spectacles-$(build.my_tag)-$(TARGET).tar.gz target/release/spectacles
         displayName: 'Build Spectacles'
+      - bash: |
+          MY_TAG="$(Build.SourceBranch)"
+          MY_TAG=${MY_TAG#refs/tags/}
+          echo $MY_TAG
+          echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
+        displayName: "Create tag variable."
 
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
-        condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/client-v')
+        condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
         inputs:
+          target: '$(build.sourceVersion)'
+          tag: '$(build.my_tag)'
           githubConnection: my-account
           repositoryName: spec-tacles-spectacles-rs
-          assets: $(Build.ArtifactStagingDirectory)/*.zip
+          assets: $(Build.ArtifactStagingDirectory)/*.tar.gz
