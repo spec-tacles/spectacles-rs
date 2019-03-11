@@ -1,0 +1,29 @@
+parameters:
+  name: ''  # defaults for any parameters that aren't specified
+  vmImage: ''
+  toolchain: 'stable'
+
+jobs:
+  - job: ${{ parameters.name }}
+    pool:
+      vmImage: ${{ parameters.vmImage }}
+    variables:
+      tc: ${{ parameters.toolchain }}
+    steps:
+      - bash: |
+          curl -o rustup-init.sh https://sh.rustup.rs -sSf
+          sh rustup-init.sh --default-toolchain $(tc) -y
+        displayName: 'Install Rust'
+      - bash: |
+          source $HOME/.cargo/env
+          cargo build -p spectacles --release
+      - bash: |
+          zip spectacles.zip target/release/spectacles
+        displayName: 'Build Spectacles'
+      - task: GithubRelease@0
+          displayName: 'Create GitHub Release'
+          condition: startsWith(variables['Build.SourceBranch'], 'refs/client/release-')
+          inputs:
+            githubConnection: spec-tacles
+            repositoryName: spec-tacles-spectacles-rs
+            assets: $(Build.ArtifactStagingDirectory)/*.zip
