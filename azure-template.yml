@@ -16,16 +16,18 @@ jobs:
         displayName: 'Install Rust'
 
       - bash: |
-          source $HOME/.cargo/env
-          cargo build -p spectacles --release
-          tar -zcvf spectacles-$(build.my_tag)-$(TARGET).tar.gz target/release/spectacles
-        displayName: 'Build Spectacles'
-      - bash: |
           MY_TAG="$(Build.SourceBranch)"
           MY_TAG=${MY_TAG#refs/tags/}
           echo $MY_TAG
           echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
         displayName: 'Create tag variable.'
+
+      - bash: |
+          source $HOME/.cargo/env
+          cargo build -p spectacles --release
+          tar -zcvf spectacles-$(build.my_tag)-$(TARGET).tar.gz target/release/spectacles
+        displayName: 'Build Spectacles'
+
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
         inputs:
