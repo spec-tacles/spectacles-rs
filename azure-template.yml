@@ -22,7 +22,9 @@ jobs:
         displayName: 'Build Spectacles'
 
       - task: GithubRelease@0
-          inputs:
-            githubConnection: spec-tacles
-            repositoryName: spec-tacles-spectacles-rs
-            assets: $(Build.ArtifactStagingDirectory)/*.zip
+      displayName: 'Package GitHub release'
+      condition: startsWith(variables['Build.SourceBranch'], 'client/v')
+      inputs:
+        githubConnection: spec-tacles
+        repositoryName: spec-tacles-spectacles-rs
+        assets: $(Build.ArtifactStagingDirectory)/*.zip
