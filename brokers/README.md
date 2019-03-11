@@ -18,8 +18,8 @@ use spectacles_brokers::AmqpBroker;
 fn main() {
     let addr = var("AMQP_ADDR").expect("No AMQP server address found.");
     let addr: SocketAddr = addr.parse();
-   
-    let connect = AmqpBroker::new(&addr, "test", None);
+
+    let connect = AmqpBroker::new(&addr, "test".to_string(), None);
     let result = connect.and_then(|broker| {
         let json = r#"{"message": "Example Publish."}"#.as_bytes();
         broker.publish("HELLO", json.to_vec())
@@ -29,7 +29,7 @@ fn main() {
     }).map_err(|err| {
         eprintln!("An error was encountered during publish: {}", err);
     });
-    
+
     tokio::run(success);
 }
 

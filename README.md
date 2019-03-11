@@ -14,12 +14,12 @@ If you so choose, you may even have your bot use different programming languages
 ## Getting started
 This library features seveal important crates to help you get started.
 
-[Spectacles Client](client/README.md) - A standalone binary for Spectacles, which includes a Discord gateway and an event publishing system.
+[Spectacles Client](client/) - A standalone binary for Spectacles, which includes a Discord gateway and an event publishing system.
 
-[Spectacles Gateway](gateway/README.md) - A Spectacles gateway implementation for Discord with enables stateless sharding.
+[Spectacles Gateway](gateway/) - A Spectacles gateway implementation for Discord with enables stateless sharding.
 
-[Spectacles Models](models/README.md) - A collection of data types than are used for serializing and deserializing data from the Discord API.
+[Spectacles Models](models/) - A collection of data types than are used for serializing and deserializing data from the Discord API.
 
-[Spectacles REST](rest/README.md) - A Spectacles implementation of Discord's REST API methods.
+[Spectacles REST](rest/) - A Spectacles implementation of Discord's REST API methods.
 
 See each crate for more details on how to get started with your application.
