@@ -1,3 +1,8 @@
+parameters:
+  name: ''  # defaults for any parameters that aren't specified
+  vmImage: ''
+  toolchain: 'stable'
+  
 jobs:
   - job: ${{ parameters.name }}
     pool:
@@ -21,10 +26,8 @@ jobs:
           echo $MY_TAG
           echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
         displayName: "Create tag variable."
-
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
-        # condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
         inputs:
           target: '$(build.sourceVersion)'
           tag: '$(build.my_tag)'
