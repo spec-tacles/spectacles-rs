@@ -23,7 +23,7 @@ jobs:
 
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
-        condition: startsWith(variables['Build.SourceBranch'], 'client/v')
+        condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/client-v')
         inputs:
           githubConnection: my-account
           repositoryName: spec-tacles-spectacles-rs
