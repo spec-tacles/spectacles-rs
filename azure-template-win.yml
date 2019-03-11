@@ -32,6 +32,7 @@ jobs:
         inputs:
           githubConnection: my-account
           target: '$(build.sourceVersion)'
+          tagSource: 'manual'
           tag: '$(build.my_tag)'
           repositoryName: spec-tacles-spectacles-rs
           assets: $(Build.ArtifactStagingDirectory)/*.exe
