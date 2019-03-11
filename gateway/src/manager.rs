@@ -2,9 +2,9 @@ use std::{
     borrow::BorrowMut,
     collections::HashMap,
     sync::Arc,
+    time::Duration,
+    time::Instant
 };
-use std::time::Duration;
-use std::time::Instant;
 
 use futures::{
     future::Future,
@@ -19,13 +19,13 @@ use tokio::runtime::current_thread;
 use tokio::timer::Delay;
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
-use spectacles_model::gateway::{GatewayBot, Opcodes};
+use spectacles_model::gateway::{GatewayBot, GatewayEvent, Opcodes};
 
 use crate::{
     constants::API_BASE,
     errors::Error,
     queue::{MessageSink, MessageSinkError, ReconnectQueue, ShardQueue},
-    shard::Shard
+    shard::{Shard, ShardAction}
 };
 use crate::EventHandler;
 use crate::ManagerOptions;
@@ -36,9 +36,10 @@ pub enum ShardStrategy {
     /// The spawner will automatically spawn shards based on the amount recommended by Discord.
     Recommended,
     /// Spawns shards according to the amount specified, starting from shard 0.
-    SpawnAmount(u64)
+    SpawnAmount(usize)
 }
-pub type ShardMap = HashMap<u64, Arc<Mutex<Shard>>>;
+/// A collection of shards, keyed by their ID.
+pub type ShardMap = HashMap<usize, Arc<Mutex<Shard>>>;
 pub type MessageStream = UnboundedReceiver<(Arc<Mutex<Shard>>, TungsteniteMessage)>;
 /// An organized group of Discord gateway shards.
 pub struct ShardManager<H: EventHandler + Send + Sync + 'static> {
@@ -48,8 +49,9 @@ pub struct ShardManager<H: EventHandler + Send + Sync + 'static> {
     pub options: Option<ManagerOptions<H>>,
     /// A collection of shards that have been spawned.
     pub shards: Arc<RwLock<ShardMap>>,
-    queue_sender: MpscSender<u64>,
-    queue_receiver: Option<MpscReceiver<u64>>,
+    _spawn_amount: usize,
+    queue_sender: MpscSender<usize>,
+    queue_receiver: Option<MpscReceiver<usize>>,
     reconnect_queue: ShardQueue,
     message_stream: Option<MessageStream>,
 }
@@ -76,26 +78,29 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
                 };
                 Self {
                     token,
-                    reconnect_queue: ShardQueue::new(shard_count as usize),
+                    reconnect_queue: ShardQueue::new(shard_count),
                     queue_sender,
                     options: Some(options),
                     queue_receiver: Some(queue_receiver),
                     message_stream: None,
+                    _spawn_amount: shard_count,
                     shards: Arc::new(RwLock::new(HashMap::new())),
                 }
         })
     }
 
     /// Spawns shards up to the specified amount and identifies them with Discord.
-    pub fn spawn(&mut self) -> impl Future<Item = (), Error = Error> + Send {
-        let shard_count = self.reconnect_queue.queue.capacity() as u64;
-        info!("[Manager] Attempting to spawn {} shards.", &shard_count);
+    pub fn begin_spawn(mut self) {
+        info!("Bootstrapping ShardManager.");
+        let shard_count = self._spawn_amount.clone();
+        debug!("Attempting to spawn {} shards.", &shard_count);
         for i in 0..shard_count {
-            trace!("[Manager] Sending shard {} to queue.", &i);
+            trace!("Sending shard {} to queue.", &i);
             tokio::spawn(self.reconnect_queue.push_back(i)
-                .map_err(move |_| error!("[Manager] Failed to place Shard {} into reconnect queue.", i))
+                .map_err(move |_| error!("Failed to place Shard {} into reconnect queue.", i))
             );
         }
+
         let (sender, receiver) = unbounded();
         self.message_stream = Some(receiver);
         let mut queue_sender = self.queue_sender.clone();
@@ -105,20 +110,6 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
         let shards = self.shards.clone();
         let message_stream = self.message_stream.take().unwrap();
         let opts = self.options.take().unwrap();
-
-        tokio::spawn(message_stream.for_each(move |(mut shard, message)| {
-            let current_shard = shard.borrow_mut();
-            let mut shard = current_shard.lock().clone();
-            trace!("Websocket message received: {:?}", &message.clone());
-            let event = shard.resolve_packet(&message).expect("Failed to parse the shard message.");
-            if let Opcodes::Dispatch = event.op {
-                tokio::spawn({
-                    opts.handler.on_packet(&shard, event.clone());
-                    futures::future::ok(())
-                });
-            }
-            shard.fulfill_gateway(event)
-        }));
 
         current_thread::spawn(self.reconnect_queue.pop_front()
             .and_then(move |shard| {
@@ -136,8 +127,74 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
             ))
         );
 
-        Box::new(futures::future::ok(()))
+        tokio::spawn(message_stream.for_each(move |(mut shard, message)| {
+            let current_shard = shard.borrow_mut();
+            let mut shard = current_shard.lock().clone();
+            trace!("Websocket message received: {:?}", &message.clone());
+            let event = shard.resolve_packet(&message).expect("Failed to parse the shard message.");
+            if let Opcodes::Dispatch = event.op {
+                tokio::spawn({
+                    opts.handler.on_packet(&mut shard, event.clone());
+                    futures::future::ok(())
+                });
+            }
+            let action = shard.fulfill_gateway(event.clone());
+            match action {
+                Ok(a) => match a {
+                    ShardAction::Autoreconnect => {
+                        current_thread::spawn(shard.autoreconnect().map_err({
+                            let shard = shard.info[0].clone();
+                            move |err| {
+                                error!("Shard {} failed to autoreconnect. {}", shard, err);
+                            }
+                        }));
+                    },
+                    ShardAction::Identify => {
+                        debug!("[Shard {}] Identifying with the gateway.", &shard.info[0]);
+                        if let Err(e) = shard.identify() {
+                            warn!("[Shard {}] Failed to identify with gateway. {:?}", &shard.info[0], e);
+                        };
+                    },
+                    ShardAction::Reconnect => {
+                        shard.reconnect();
+                        info!("[Shard {}] Reconnection successful.", &shard.info[0]);
+                    },
+                    ShardAction::Resume => {
+                        shard.resume();
+                        info!("[Shard {}] Successfully resumed session.", &shard.info[0]);
+                    },
+                    _ => {}
+                },
+                Err(e) => {
+                    error!("Failed to perform action for Shard {}. {}", &shard.info[0], e);
+                },
+            };
+            if let Some(GatewayEvent::READY) = event.t {
+                &(self).queue();
+            };
+
+            futures::future::ok(())
+        }));
     }
+
+    fn queue(&mut self) {
+        current_thread::spawn({
+            self.reconnect_queue.pop_front()
+                .and_then({
+                    let mut sender = self.queue_sender.clone();
+                    move |id| {
+                        if let Some(next) = id {
+                            if let Err(e) = sender.try_send(next) {
+                                error!("Could not place shard ID in queue. {:?}", e);
+                            }
+                        }
+
+                        futures::future::ok(())
+                    }
+                })
+        });
+    }
+
 
     /*
     /// Spawn a specific range of shards in this process.
@@ -147,16 +204,15 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
     */
 
 }
-
 fn receive_chan(
-    receiver: MpscReceiver<u64>,
+    receiver: MpscReceiver<usize>,
     token: String,
-    shardcount: u64,
+    shardcount: usize,
     sender: UnboundedSender<(Arc<Mutex<Shard>>, TungsteniteMessage)>,
-    shardmap: Arc<RwLock<ShardMap>>,
+    shardmap: Arc<RwLock<ShardMap>>
 ) -> impl Future<Item = (), Error = ()> {
     receiver.for_each(move |shard_id| {
-        trace!("[Manager] Received notification to shart Shard {}.", shard_id);
+        debug!("Received notification to shart Shard {}.", shard_id);
         let shardmap = shardmap.clone();
         let token = token.clone();
         let sender = sender.clone();
@@ -166,7 +222,7 @@ fn receive_chan(
                 current_thread::spawn(create_shard(token, [shard_id, shardcount], sender)
                     .map(move |shard| {
                         shardmap.write().insert(shard_id, shard);
-                        info!("[Manager] Shard {} successfully spawned.", shard_id);
+                        info!("Shard {} has been successfully spawned.", shard_id);
                     })
                 );
                 futures::future::ok(())
@@ -176,24 +232,24 @@ fn receive_chan(
 
 fn create_shard(
     token: String,
-    info: [u64; 2],
+    info: [usize; 2],
     sender: UnboundedSender<(Arc<Mutex<Shard>>, TungsteniteMessage)>,
 ) -> impl Future<Item = Arc<Mutex<Shard>>, Error = ()> {
     Shard::new(token.clone(), info)
-        .map_err(move |err| error!("[Manager] Failed to start Shard {}. {:?}", info[0], err))
+        .map_err(move |err| error!("Failed to start Shard {}. {:?}", info[0], err))
         .and_then(|res| {
             let shard = Arc::new(Mutex::new(res));
             let sink = MessageSink {
                 shard: shard.clone(),
                 sender,
             };
-            current_thread::spawn(Box::new(shard.lock()
+            tokio::spawn(Box::new(shard.lock()
                 .stream.lock().take()
                 .unwrap()
                 .map_err(MessageSinkError::from)
                 .forward(sink)
                 .map(|_| ())
-                .map_err(|e| error!("[Manager] Failed to forward shard messages to the sink. {:?}", e)))
+                .map_err(|e| error!("Failed to forward shard messages to the sink. {:?}", e)))
             );
             futures::future::ok(shard)
         })

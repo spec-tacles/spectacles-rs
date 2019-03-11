@@ -1,6 +1,4 @@
 //! Structures related to Discord guilds.
-use chrono::{DateTime, FixedOffset};
-
 use crate::{
     channel::Channel,
     message::Emoji,
@@ -19,7 +17,7 @@ mod audit_log;
 mod member;
 
 /// A Discord Guild, commonly referred to as a "server".
-#[derive(Deserialize, Debug, Serialize, Clone)]
+#[derive(Deserialize, Debug, Serialize, Clone, Default)]
 pub struct Guild {
     /// The snowflake ID of this guild.
     pub id: String,
@@ -30,11 +28,12 @@ pub struct Guild {
     /// The guild's splash hash. Will be a None value if it does not exist.
     pub splash: Option<String>,
     /// Whether or not the user is an owner of the guild.
-    pub owner: Option<bool>,
+    pub owner: bool,
     /// The ID of the guild owner.
     pub owner_id: String,
     /// The permissions that the user has in this guild.
-    pub permissions: Option<i32>,
+    #[serde(default)]
+    pub permissions: i32,
     /// The region in which this guild is located.
     pub region: String,
     /// The AFK channel ID for this guild.
@@ -42,11 +41,14 @@ pub struct Guild {
     /// The AFK channel timeout for this guild.
     pub afk_timeout: Option<String>,
     /// Whether or not the guild can be embedded in a widget.
-    pub embed_enabled: Option<bool>,
+    #[serde(default)]
+    pub embed_enabled: bool,
     /// The channel ID that an embed widget will be generated for.
-    pub embed_channel_id: Option<String>,
+    #[serde(default)]
+    pub embed_channel_id: String,
     /// The amount of members that are currently in this guild.
-    pub member_count: String,
+    #[serde(default)]
+    pub member_count: i32,
     /// A list of features that this guild currently has.
     pub features: Vec<String>,
     /// A collection of roles that belong to this guild.
@@ -64,22 +66,32 @@ pub struct Guild {
     /// The ID of the channel in which system messages are sent to.
     pub system_channel_id: Option<String>,
     /// The time that this guild was joined.
-    pub joined_at: DateTime<FixedOffset>,
+    #[serde(default)]
+    pub joined_at: String,
     /// Whether this guild is considered a large guild by Discord.
+    #[serde(default)]
     pub large: bool,
     /// Whether or not this guild is available.
+    #[serde(default)]
     pub unavailable: bool,
     /// Whether or not the server widget is enabled.
+    #[serde(default)]
     pub widget_enabled: bool,
     /// The ID of the guild's widget channel, if one exists.
-    pub widget_channel_id: Option<String>,
+    #[serde(default)]
+    pub widget_channel_id: String,
     /// The default message notification setting for this guild.
     pub default_message_notifications: DefaultMessageNotifications,
     /// A collection of guild voice states.
     pub voice_states: Vec<VoiceState>,
     /// A collection of channels in this guild.
+    #[serde(default)]
     pub channels: Vec<Channel>,
+    /// A collection of members in this guild.
+    #[serde(default)]
+    pub members: Vec<GuildMember>,
     /// A collection of presences in this guild.
+    #[serde(default)]
     pub presences: Vec<Presence>
 }
 
@@ -194,6 +206,11 @@ pub enum ExplicitContentFilter {
     AllMembers
 }
 
+impl Default for ExplicitContentFilter {
+    fn default() -> Self {
+        ExplicitContentFilter::Disabled
+    }
+}
 /// A guild's MFA levels.
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub enum MfaLevel {
@@ -201,6 +218,12 @@ pub enum MfaLevel {
     None,
     /// The guild requires MFA on a user account which has elevated permissions.
     Elevated,
+}
+
+impl Default for MfaLevel {
+    fn default() -> Self {
+        MfaLevel::None
+    }
 }
 /// A guild's default message notification setting.
 #[derive(Deserialize, Debug, Serialize, Clone)]
@@ -211,6 +234,11 @@ pub enum DefaultMessageNotifications {
     OnlyMentions
 }
 
+impl Default for DefaultMessageNotifications {
+    fn default() -> Self {
+        DefaultMessageNotifications::AllMessages
+    }
+}
 /// A guild's verification levels.
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub enum VerificationLevel {
@@ -224,4 +252,10 @@ pub enum VerificationLevel {
     High,
     /// The guild requires that the user have a verified phone number on their account.
     Insane
+}
+
+impl Default for VerificationLevel {
+    fn default() -> Self {
+        VerificationLevel::None
+    }
 }

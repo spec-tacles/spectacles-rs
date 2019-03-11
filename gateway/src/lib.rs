@@ -5,6 +5,8 @@
 //! - Zero-Downtime shard spawning.
 //! - Integrates seamlessly with the spectacles-brokers package.
 //!
+//! ## About
+///  This crate allows you to interact with the Discord gateway. Please refer to the [Discord Gateway Docs](https://discordapp.com/developers/docs/topics/gateway) for more background on how to use this message.
 //!
 //! ## Example
 //! ```rust,norun
@@ -33,10 +35,9 @@
 //! /// The on_packet() trait method will be called when a packet is received from the Discord gateway.
 //! struct Handler;
 //! impl EventHandler for Handler {
-//!      fn on_packet(&self, shard: &Shard, pkt: ReceivePacket) -> Box<Future<Item = (), Error = ()> + Send> {
+//!      fn on_packet(&self, shard: &Shard, pkt: ReceivePacket) {
 //!          println!("Received Gateway Packet from Shard {:?} - {:?}", shard.info, pkt);
 //!          // Do other things with message, such as sending it to a message broker.
-//!          Box::new(futures::future::ok(()))
 //!      }
 //!  }
 //! ```
@@ -68,5 +69,5 @@ where H: EventHandler + Send + Sync
 /// The event handler trait, useful for receiving events from the websocket.
 pub trait EventHandler {
     /// Executed whenever a raw packet is received.
-    fn on_packet(&self, _shard: &Shard, _pkt: ReceivePacket);
+    fn on_packet(&self, _shard: &mut Shard, _pkt: ReceivePacket);
 }

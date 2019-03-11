@@ -1,7 +1,8 @@
 # spectacles-gateway
-
 A rich Spectacles Gateway client for Rust.
 
+## About
+This crate allows you to interact with the Discord gateway. Pllease refer to the [Discord Gateway Docs](https://discordapp.com/developers/docs/topics/gateway) for more background on how to use this crate.
 ## Features
 - Asynchronous websocket message handling.
 - Zero-Downtime shard spawning.
@@ -34,10 +35,9 @@ fn main() {
 /// The on_packet() trait method will be called when a packet is received from the Discord gateway.
 struct Handler;
 impl EventHandler for Handler {
-     fn on_packet(&self, shard: Shard, pkt: ReceivePacket) -> Box<Future<Item = (), Error = ()> + Send> {
+     fn on_packet(&self, shard: &mut Shard, pkt: ReceivePacket) {
          println!("Received Gateway Packet from Shard {:?} - {:?}", shard.info, pkt);
          // Do other things with message, such as sending it to a message broker.
-         Box::new(futures::future::ok(()))
      }
  }
 ```

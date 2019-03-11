@@ -1,0 +1,21 @@
+[package]
+name = "spectacles"
+description = "A Discord library that simplifies the process of writing distributed Discord applications and services."
+readme = "README.md"
+repository = "https://github.com/spec-tacles/spectacles-rs"
+version = "0.1.0"
+edition = "2018"
+license = "MIT"
+
+[dependencies]
+clap = "2.32.0"
+serde = "1.0.89"
+toml = "0.4.10"
+tokio = "0.1.16"
+env_logger = "0.6.1"
+log = "0.4.6"
+kankyo = "0.2.0"
+futures = "0.1.25"
+spectacles-gateway = { path = "../gateway" }
+spectacles-brokers = { path = "../brokers" }
+spectacles-model = { path = "../models" }

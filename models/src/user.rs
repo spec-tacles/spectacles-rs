@@ -10,9 +10,12 @@ pub struct User {
     /// The user's avatar hash, if they have one.
     pub avatar: Option<String>,
     /// Whether or not this user is a bot.
+    #[serde(default)]
     pub bot: bool,
     /// Whether or not this user has two factor authentication on their account.
+    #[serde(default)]
     pub mfa_enabled: bool,
     /// The user's email. Only available on user accounts.
+    #[serde(default)]
     pub email: Option<String>
 }

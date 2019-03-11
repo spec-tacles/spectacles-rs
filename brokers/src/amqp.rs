@@ -16,7 +16,6 @@ use lapin_futures::{
     types::FieldTable,
 };
 use tokio::net::TcpStream;
-use tokio::runtime::current_thread;
 
 use crate::errors::Error;
 
@@ -52,7 +51,7 @@ impl AmqpBroker {
     /// }
     /// ```
 
-    pub fn new<'a>(addr: &SocketAddr, group: &'a str, subgroup: Option<&'a str>) -> impl Future<Item = AmqpBroker, Error = Error> + 'a {
+    pub fn new<'a>(addr: &SocketAddr, group: String, subgroup: Option<String>) -> impl Future<Item = AmqpBroker, Error = Error> + 'a {
         TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
             AmqpClient::connect(stream, ConnectionOptions::default())
                 .map_err(Error::from)
@@ -61,14 +60,14 @@ impl AmqpBroker {
             amqp.create_channel().map_err(Error::from)
         }).and_then(move |channel| {
             debug!("Created AMQP Channel With ID: {}", &channel.id);
-            channel.exchange_declare(group, "direct", ExchangeDeclareOptions {
+            channel.exchange_declare(group.as_ref(), "direct", ExchangeDeclareOptions {
                 durable: true,
                 ..Default::default()
             }, FieldTable::new()).map(move |_| {
                 Self {
                     channel: Arc::new(channel),
-                    group: group.to_string(),
-                    subgroup: subgroup.map(|g| g.to_string())
+                    group,
+                    subgroup
                 }
             }).map_err(Error::from)
         })
@@ -111,7 +110,7 @@ impl AmqpBroker {
     ///     })
     /// ```
     ///
-    pub fn subscribe<C: Fn(String) + 'static>(self, evt: &'static str, callback: C) -> Self {
+    pub fn subscribe<C: Fn(String) + Send + Sync + 'static>(self, evt: &'static str, callback: C) -> Self {
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
             None => format!("{}:{}", self.group, evt)
@@ -140,16 +139,21 @@ impl AmqpBroker {
         }).and_then({
             let channel = Arc::clone(&self.channel);
             move |stream| stream.for_each(move |message| {
-                debug!("Incoming message: {:?}", message);
-                tokio::spawn(channel.basic_ack(message.delivery_tag, false).map_err(|err| {
-                    error!("Failed to ACK message. {}", err);
-                }));
+                debug!("Incoming message received from AMQP with a delivery tag of {}.", &message.delivery_tag);
+                tokio::spawn(channel.basic_ack(message.delivery_tag, false)
+                    .map(|_| {
+                        debug!("Message acknowledge sent.");
+                    })
+                    .map_err(|err| {
+                        error!("Failed to acknowledge message. {}", err);
+                    })
+                );
                 let decoded = std::str::from_utf8(&message.data).unwrap();
                 callback(decoded.to_string());
                 futures::future::ok(())
             })
         }).map_err(Error::from);
-        current_thread::spawn(future.map_err(move |err| {
+        tokio::spawn(future.map_err(move |err| {
             error!("Error encountered on event: {} - {}", evt, err);
         }));
 

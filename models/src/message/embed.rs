@@ -1,112 +1,144 @@
-use chrono::{DateTime, FixedOffset};
-
 /// Represents a Message Embed being sent.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct Embed {
     /// The title of the embed.
-    pub title: Option<String>,
+    #[serde(default)]
+    pub title: String,
     /// The type of embed.
-    pub r#type: Option<String>,
+    #[serde(default, rename = "type")]
+    pub kind: String,
     /// The description of the embed.
-    pub description: Option<String>,
+    #[serde(default)]
+    pub description: String,
     /// The URL of the embed.
-    pub url: Option<String>,
+    #[serde(default)]
+    pub url: String,
     /// The timestamp of the embed.
-    pub timestamp: Option<DateTime<FixedOffset>>,
+    #[serde(default)]
+    pub timestamp: String,
     /// The color of the embed.
-    pub color: Option<i32>,
+    #[serde(default)]
+    pub color: i32,
     /// Information about the embed's footer.
-    pub footer: Option<EmbedFooter>,
+    #[serde(default)]
+    pub footer: EmbedFooter,
     /// Information about the embed's image.
-    pub image: Option<EmbedImage>,
+    #[serde(default)]
+    pub image: EmbedImage,
     /// Information about the embed's thumbnail.
-    pub thumbnail: Option<EmbedThumbnail>,
-    /// Information about an embed's video, if applicable.,
-    pub video: Option<EmbedVideo>,
+    #[serde(default)]
+    pub thumbnail: EmbedThumbnail,
+    /// Information about an embed's video, if applicable.
+    #[serde(default)]
+    pub video: EmbedVideo,
     /// Information about an embed's provider if applicable.
-    pub provider: Option<EmbedProvider>,
+    #[serde(default)]
+    pub provider: EmbedProvider,
     /// Information about the embed's author.
-    pub author: Option<EmbedAuthor>,
+    #[serde(default)]
+    pub author: EmbedAuthor,
     /// Information about the embed's fields.
-    pub fields: Option<EmbedField>
+    pub fields: EmbedField
 }
 
 /// An Embed Footer data object.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EmbedFooter {
     /// The text of this footer.
-    pub footer: String,
+    pub text: String,
     /// The Icon URL of this footer.
-    pub icon_url: Option<String>
+    #[serde(default)]
+    pub icon_url: String,
+    /// The proxied URL of the icon.
+    #[serde(default)]
+    pub proxy_icon_url: String
 
 }
 
 /// An Embed Image data object.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EmbedImage {
     /// The source URL of the image.
-    pub url: Option<String>,
+    #[serde(default)]
+    pub url: String,
     /// A proxied URL of the image.
-    pub proxy_url: Option<String>,
+    #[serde(default)]
+    pub proxy_url: String,
     /// The height of the image.
-    pub height: Option<i32>,
+    #[serde(default)]
+    pub height: i32,
     /// The width of the image.
-    pub width: Option<i32>
+    #[serde(default)]
+    pub width: i32
 }
 
 /// An Embed Thumbnail data object.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EmbedThumbnail {
     /// The source URL of the thumbnail.
-    pub thumbnail: Option<String>,
+    #[serde(default)]
+    pub url: String,
+    #[serde(default)]
     /// A proxied URL of the thumbnail.
-    pub proxy_url: Option<String>,
+    pub proxy_url: String,
     /// The height of the thumbnail.
+    #[serde(default)]
     pub height: i32,
     /// The width of the thumbnail.
+    #[serde(default)]
     pub width: i32
 }
 
 /// An Embed Video data object.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EmbedVideo {
     /// The source URL of the video.
-    pub url: Option<String>,
+    #[serde(default)]
+    pub url: String,
     /// The height of the video.
+    #[serde(default)]
     pub height: i32,
     /// The width of the thumbnail.
+    #[serde(default)]
     pub width: i32
 }
 
 /// Information about the embed's provider.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EmbedProvider {
     /// The name of the provider.
-    pub name: Option<String>,
+    #[serde(default)]
+    pub name: String,
     /// The url of the provider.
-    pub url: Option<String>
+    #[serde(default)]
+    pub url: String
 }
 
 /// Information about the embed's author.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EmbedAuthor {
     /// The name of the author.
-    pub name: Option<String>,
+    #[serde(default)]
+    pub name: String,
     /// The URL of the author.
-    pub url: Option<String>,
+    #[serde(default)]
+    pub url: String,
     /// The URL of the author's icon.
-    pub icon_url: Option<String>,
+    #[serde(default)]
+    pub icon_url: String,
     /// A proxied version of the author's icon.
-    pub proxy_icon_url: Option<String>
+    #[serde(default)]
+    pub proxy_icon_url: String
 }
 
 /// Represents an Embed Field object.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EmbedField {
     /// The name of the field.
     pub name: String,
     /// The value of the field.
     pub value: String,
     /// Whether or not this field should display as inline.
-    pub inline: Option<bool>
+    #[serde(default)]
+    pub inline: bool
 }

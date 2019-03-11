@@ -11,7 +11,7 @@ fn main() {
     let addr = var("AMQP_ADDR").expect("No AMQP server address found.");
     let addr: SocketAddr = addr.parse().expect("Malformed URL provided, please try another URL.");
     // Just like the producer, we initialize our broker.
-    let connect = AmqpBroker::new(&addr, "test", None);
+    let connect = AmqpBroker::new(&addr, "test".to_string(), None);
     let result = connect.map(|broker| {
         // Now, we will subscribe and listen for the event we publish in the consumer.
         // We provide a callback function to the subscribe() method, which will be called when a message is received.

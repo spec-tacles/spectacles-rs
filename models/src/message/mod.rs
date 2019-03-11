@@ -1,5 +1,5 @@
 //! Structs related to Discord messages in a guild channel.
-use chrono::{DateTime, FixedOffset};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::guild::GuildMember;
 use crate::User;
@@ -20,17 +20,19 @@ pub struct Message {
     /// The ID of the channel that the message was sent in.
     pub channel_id: String,
     /// The ID of the guild that the message was sent in.
-    pub guild_id: Option<String>,
+    #[serde(default)]
+    pub guild_id: String,
     /// The author of the message.
     pub author: User,
     /// The contents of this message.
     pub content: String,
     /// The guild member form of the message author.
+    #[serde(default)]
     pub member: GuildMember,
     /// The time that this message was sent.
-    pub timestamp: DateTime<FixedOffset>,
+    pub timestamp: String,
     /// When this message was edited, if applicable.
-    pub edited_timestamp: Option<DateTime<FixedOffset>>,
+    pub edited_timestamp: Option<String>,
     /// Whether or not this was a TTS message.
     pub tts: bool,
     /// Whether or not this message mentioned everyone.
@@ -42,18 +44,24 @@ pub struct Message {
     /// Any embeds sent with this message.
     pub embeds: Vec<Embed>,
     /// The message's reactions.
+    #[serde(default)]
     pub reactions: Vec<MessageReaction>,
     /// A snowflake used to validate that a message was sent.
-    pub nonce: String,
+    #[serde(default)]
+    pub nonce: Option<String>,
     /// Whether or not the message is pinned.
     pub pinned: bool,
     /// The ID of the webhook if the message was sent by a webhook.
-    pub webhook_id: Option<String>,
+    #[serde(default)]
+    pub webhook_id: String,
     /// The type of message sent.
-    pub r#type: MessageType,
+    #[serde(rename = "type")]
+    pub kind: MessageType,
     /// Message Activity sent with rich-presence embeds.
+    #[serde(default)]
     pub activity: MessageActivity,
     /// Message Application ent with Rich Presence embeds.
+    #[serde(default)]
     pub application: MessageApplication,
 }
 
@@ -77,16 +85,18 @@ pub struct MessageAttachment {
 
 }
 /// A Rich Presence Message activity.
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct MessageActivity {
     /// The type of message activity.
-    pub r#type: Option<MessageActivityType>,
+    #[serde(rename = "type")]
+    pub kind: MessageActivityType,
     /// The party ID from a Rich Presence event.
+    #[serde(default)]
     pub party_id: String
 }
 
 /// A Rich Presence Message Application.
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct MessageApplication {
     /// The ID of the application.
     pub id: String,
@@ -101,7 +111,8 @@ pub struct MessageApplication {
 }
 
 /// A list of Message types.
-#[derive(Deserialize, Debug, Clone, Serialize)]
+#[derive(Deserialize_repr, Debug, Clone, Serialize_repr)]
+#[repr(u8)]
 pub enum MessageType {
     Default,
     RecipientAdd,
@@ -113,6 +124,12 @@ pub enum MessageType {
     GuildMemberJoin
 }
 
+impl Default for MessageType {
+    fn default() -> Self {
+        MessageType::Default
+    }
+}
+
 /// A list of Message Activity types.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 
@@ -121,4 +138,10 @@ pub enum MessageActivityType {
     Spectate,
     Listen = 3,
     JoinRequest = 5
+}
+
+impl Default for MessageActivityType {
+    fn default() -> Self {
+        MessageActivityType::Join
+    }
 }

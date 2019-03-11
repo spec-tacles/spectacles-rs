@@ -6,17 +6,20 @@ use crate::guild::Guild;
 use crate::User;
 
 /// Represents a code that when used, adds a user to a guild or group DM channel.
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct Invite {
     /// The ID of the invite code.
     pub code: String,
     /// The guild that the invite belongs to.
-    pub guild: Option<Guild>,
+    #[serde(default)]
+    pub guild: Guild,
     /// The channel that the invite belongs to.
-    pub channel: Option<Channel>,
+    pub channel: Channel,
     /// The approximate count of online members.
+    #[serde(default)]
     pub approximate_presence_count: i32,
     /// The approximate count of total members.
+    #[serde(default)]
     pub approximate_member_count: i32
 }
 

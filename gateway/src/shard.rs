@@ -41,7 +41,7 @@ use spectacles_model::{
         ResumeSessionPacket,
         SendablePacket,
     },
-    presence::{Activity, Presence, Status}
+    presence::{ClientActivity, ClientPresence, Status}
 };
 
 use crate::{
@@ -57,9 +57,9 @@ pub struct Shard {
     /// The bot token that this shard will use.
     pub token: String,
     /// The shard's info. Includes the shard's ID and the total amount of shards.
-    pub info: [u64; 2],
+    pub info: [usize; 2],
     /// The currently active presence for this shard.
-    pub presence: Presence,
+    pub presence: ClientPresence,
     /// The session ID of this shard, if applicable.
     pub session_id: Option<String>,
     /// The interval at which a heartbeat is made.
@@ -74,6 +74,14 @@ pub struct Shard {
     pub heartbeat: Arc<Mutex<Heartbeat>>,
 }
 
+/// Various actions that a shard can perform.
+pub enum ShardAction {
+    NoneAction,
+    Autoreconnect,
+    Reconnect,
+    Identify,
+    Resume
+}
 /// A shard's heartbeat information.
 #[derive(Debug, Copy, Clone)]
 pub struct Heartbeat {
@@ -92,16 +100,15 @@ impl Heartbeat {
 
 impl Shard {
     /// Creates a new Discord Shard, with the provided token.
-    pub fn new(token: String, info: [u64; 2]) -> impl Future<Item = Shard, Error = Error> {
+    pub fn new(token: String, info: [usize; 2]) -> impl Future<Item = Shard, Error = Error> {
         Shard::begin_connection(GATEWAY_URL, info[0])
             .map(move |(sender, stream)| {
                 Shard {
                     token,
                     session_id: None,
-                    presence: Presence {
-                        status: Status::Online,
-                        activity: None,
-                        since: None
+                    presence: ClientPresence {
+                        status: String::from("online"),
+                        ..Default::default()
                     },
                     info,
                     interval: None,
@@ -113,7 +120,7 @@ impl Shard {
             })
     }
 
-    pub fn fulfill_gateway<'a>(&mut self, packet: ReceivePacket<'a>) -> Box<Future<Item = (), Error = ()> + Send> {
+    pub fn fulfill_gateway<'a>(&mut self, packet: ReceivePacket<'a>) -> Result<ShardAction> {
         let info = self.info.clone();
         let current_state = self.current_state.lock().clone();
         match packet.op {
@@ -124,8 +131,12 @@ impl Shard {
                     self.session_id = Some(ready.session_id.clone());
                     trace!("[Shard {}] Received ready, set session ID as {}", &info[0], ready.session_id)
                 };
+                Ok(ShardAction::NoneAction)
             }
             Opcodes::Hello => {
+                if self.current_state.lock().clone() == "resume".to_string() {
+                    return Ok(ShardAction::NoneAction)
+                };
                 let hello: HelloPacket = serde_json::from_str(packet.d.get()).unwrap();
                 if hello.heartbeat_interval > 0 {
                     self.interval = Some(hello.heartbeat_interval);
@@ -133,36 +144,37 @@ impl Shard {
                 if current_state == "handshake".to_string() {
                     let dur = Duration::from_millis(hello.heartbeat_interval);
                     tokio::spawn(Shard::begin_interval(self.clone(), dur));
-                    trace!("[Shard {}] Identifying with the gateway.", &info[0]);
-                    if let Err(e) = self.identify() {
-                        warn!("[Shard {}] Failed to identify with gateway. {:?}", &info[0], e);
-                    };
-                    return Box::new(futures::future::ok(()));
+                    return Ok(ShardAction::Identify);
                 }
-                return Box::new(
-                    self.autoreconnect()
-                    .and_then(|_| Box::new(futures::future::ok(()))).map_err(|_| ())
-                );
+                Ok(ShardAction::Autoreconnect)
             },
             Opcodes::HeartbeatAck => {
                 let mut hb = self.heartbeat.lock().clone();
                 hb.acknowledged = true;
-            }
-            _ => {}
-        };
-        Box::new(futures::future::ok(()))
+                Ok(ShardAction::NoneAction)
+            },
+            Opcodes::Reconnect => Ok(ShardAction::Reconnect),
+            Opcodes::InvalidSession => {
+                let invalid: bool = serde_json::from_str(packet.d.get()).unwrap();
+                if !invalid {
+                    Ok(ShardAction::Identify)
+                } else { Ok(ShardAction::Resume) }
+            },
+            _ => Ok(ShardAction::NoneAction)
+        }
     }
 
     /// Identifies a shard with Discord.
     pub fn identify(&mut self) -> Result<()> {
         let token = self.token.clone();
         let shard = self.info.clone();
+        let presence = self.presence.clone();
         self.send_payload(IdentifyPacket {
             large_threshold: 250,
             token,
             shard,
             compress: false,
-            presence: None,
+            presence: Some(presence),
             version: GATEWAY_VERSION,
             properties: IdentifyProperties {
                 os: std::env::consts::OS.to_string(),
@@ -183,13 +195,14 @@ impl Shard {
 
     /// Makes a request to reconnect the shard.
     pub fn reconnect(&mut self) -> impl Future<Item = (), Error = Error> + Send {
-        trace!("[Shard {}] Perfoming reconnect to gateway.", &self.info[0]);
+        debug!("[Shard {}] Attempting to reconnect to gateway.", &self.info[0]);
         self.reset_values().expect("[Shard] Failed to reset this shard for autoreconnecting.");
         self.dial_gateway()
     }
 
     /// Resumes a shard's past session.
     pub fn resume(&mut self) -> impl Future<Item = (), Error = Error> + Send {
+        debug!("[Shard {}] Attempting to resume gateway connection.", &self.info[0]);
         let seq = self.heartbeat.lock().seq;
         let token = self.token.clone();
         let state = self.current_state.clone();
@@ -225,21 +238,21 @@ impl Shard {
 
 
     pub fn change_status(&mut self, status: Status) -> Result<()> {
-        self.presence.status = status;
+        self.presence.status = status.to_string();
         let oldpresence = self.presence.clone();
         self.change_presence(oldpresence)
     }
 
-    pub fn change_activity(&mut self, activity: Activity) -> Result<()> {
-        self.presence.activity = Some(activity);
+    pub fn change_activity(&mut self, activity: ClientActivity) -> Result<()> {
+        self.presence.game = Some(activity);
         let oldpresence = self.presence.clone();
         self.change_presence(oldpresence)
-
     }
 
-    pub fn change_presence(&mut self, presence: Presence) -> Result<()> {
+    pub fn change_presence(&mut self, presence: ClientPresence) -> Result<()> {
+        debug!("[Shard {}] Sending a presence change payload. {:?}", self.info[0], presence.clone());
         self.send_payload(presence.clone())?;
-        self.presence= presence;
+        self.presence = presence;
         Ok(())
     }
 
@@ -294,7 +307,7 @@ impl Shard {
             })
     }
 
-    fn begin_connection(ws: &str, shard_id: u64) -> impl Future<Item = (UnboundedSender<WebsocketMessage>, ShardSplitStream), Error = Error> {
+    fn begin_connection(ws: &str, shard_id: usize) -> impl Future<Item = (UnboundedSender<WebsocketMessage>, ShardSplitStream), Error = Error> {
         let url = Url::from_str(ws).expect("Invalid Websocket URL has been provided.");
         let req = Request::from(url);
         let (host, port) = Shard::get_addr_info(&req);

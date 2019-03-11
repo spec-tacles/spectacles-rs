@@ -1,7 +1,9 @@
 [workspace]
 members = [
+    "client",
     "brokers/",
     "gateway/",
     "rest/",
+    "sharder/",
     "models/"
 ]

@@ -68,13 +68,13 @@ impl ::std::fmt::Debug for MessageSinkError {
 
 pub trait ReconnectQueue {
     type Error: 'static;
-    fn push_back(&mut self, shard_id: u64) -> Box<Future<Item = (), Error = Self::Error> + Send>;
-    fn pop_front(&mut self) -> Box<Future<Item = Option<u64>, Error = Self::Error> + Send>;
+    fn push_back(&mut self, shard_id: usize) -> Box<Future<Item = (), Error = Self::Error> + Send>;
+    fn pop_front(&mut self) -> Box<Future<Item = Option<usize>, Error = Self::Error> + Send>;
 }
 
 #[derive(Clone)]
 pub struct ShardQueue {
-    pub queue: VecDeque<u64>,
+    pub queue: VecDeque<usize>,
 }
 
 impl ShardQueue {
@@ -87,12 +87,12 @@ impl ShardQueue {
 
 impl ReconnectQueue for ShardQueue {
     type Error = ();
-    fn push_back(&mut self, shard_id: u64) -> Box<Future<Item = (), Error = Self::Error> + Send> {
+    fn push_back(&mut self, shard_id: usize) -> Box<Future<Item = (), Error = Self::Error> + Send> {
         self.queue.push_back(shard_id);
         Box::new(future::ok(()))
     }
 
-    fn pop_front(&mut self) -> Box<Future<Item = Option<u64>, Error = Self::Error> + Send> {
+    fn pop_front(&mut self) -> Box<Future<Item = Option<usize>, Error = Self::Error> + Send> {
         Box::new(future::ok(self.queue.pop_front()))
     }
 }

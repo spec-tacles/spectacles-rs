@@ -2,16 +2,18 @@
 use crate::guild::GuildMember;
 
 /// Represents a user's voice connection status.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct VoiceState {
     /// The guild ID of the guild this voice state belongs to.
-    pub guild_id: Option<String>,
+    #[serde(default)]
+    pub guild_id: String,
     /// The channel ID of the channel the user is connected to.
     pub channel_id: Option<String>,
     /// The user ID of the user this voice state belongs to.
     pub user_id: String,
     /// The guild member that this voice state belongs to.
-    pub member: Option<GuildMember>,
+    #[serde(default)]
+    pub member: GuildMember,
     /// The session ID of this voice state.
     pub session_id: String,
     /// Whether or not the user is deafened on the server.

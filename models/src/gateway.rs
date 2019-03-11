@@ -6,7 +6,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
     guild::UnavailableGuild,
-    presence::{Activity, Presence},
+    presence::{Activity, ClientPresence},
     User
 };
 
@@ -21,7 +21,7 @@ pub struct GatewayBot {
     /// The websocket URL that can be used to begin connecting to this gateway.
     pub url: String,
     /// The recommended number of shards to spawn when connecting.
-    pub shards: u64,
+    pub shards: usize,
     /// Information regarding the current session start limit.
     pub session_start_limit: SessionStartLimit
 }
@@ -73,9 +73,9 @@ pub struct IdentifyPacket {
     /// The total number of members where the gateway will stop sending offline members in the guild member list.
     pub large_threshold: i32,
     /// Holds the sharding information for this shard.
-    pub shard: [u64; 2],
+    pub shard: [usize; 2],
     /// The initial presence of this shard.
-    pub presence: Option<Presence>
+    pub presence: Option<ClientPresence>
 }
 
 
@@ -255,6 +255,7 @@ pub enum GatewayEvent {
     MESSAGE_REACTION_REMOVE,
     MESSAGE_REACTION_REMOVE_ALL,
     PRESENCE_UPDATE,
+    PRESENCES_REPLACE,
     TYPING_START,
     USER_UPDATE,
     VOICE_STATE_UPDATE,
