@@ -2,7 +2,7 @@ parameters:
   name: ''  # defaults for any parameters that aren't specified
   vmImage: ''
   toolchain: 'stable'
-  
+
 jobs:
   - job: ${{ parameters.name }}
     pool:
@@ -33,5 +33,5 @@ jobs:
           tagSource: 'manual'
           tag: '$(build.my_tag)'
           githubConnection: my-account
-          repositoryName: spec-tacles-spectacles-rs
+          repositoryName: spec-tacles/spectacles-rs
           assets: $(Build.ArtifactStagingDirectory)/*.tar.gz
