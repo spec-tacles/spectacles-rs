@@ -17,11 +17,12 @@ jobs:
       - bash: |
           source $HOME/.cargo/env
           cargo build -p spectacles --release
-          tar -zcvf spectacles-$(build.my_tag)-$(TARGET).tar.gz target/release/spectacles
+          tar -zcvf 'spectacles-$(build.my_tag)-$(TARGET).tar.gz target/release/spectacles'
         displayName: 'Build Spectacles'
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
+        condition: startsWith(variables['Build.SourceBranch'], 'client/v')
         inputs:
-          githubConnection: 'my-account'
-          repositoryName: 'spec-tacles/spectacles-rs'
-          assets: $(Build.ArtifactStagingDirectory)/*.zip
+          githubConnection: my-account
+          repositoryName: spec-tacles-spectacles-rs
+          assets: $(Build.ArtifactStagingDirectory)/*.tar.gz
