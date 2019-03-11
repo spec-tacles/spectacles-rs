@@ -20,7 +20,6 @@ jobs:
           zip spectacles.zip target/release/spectacles
         displayName: 'Build Spectacles'
       - task: GithubRelease@0
-          displayName: 'Build GitHub Release'
           inputs:
             githubConnection: spec-tacles
             repositoryName: spec-tacles-spectacles-rs

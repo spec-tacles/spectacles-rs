@@ -13,7 +13,7 @@ name = "spectacles_gateway"
 
 [dependencies]
 tokio-tungstenite = { version = "0.6.0", features = ["tls", "connect"]}
-spectacles-model = { path = "../models" }
+spectacles-model = { version = "0.1.3", path = "../models" }
 reqwest = "0.9.10"
 parking_lot = "0.7.1"
 serde = "1.0.88"
