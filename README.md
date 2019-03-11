@@ -9,6 +9,7 @@ All components are usually unified through a message brokering system, which mea
 Imagine the following: You want to push a major update in your bot, but you fear the downtime that it would bring. With Spectacles, you can have your application split up into "workers", each of whom will consume Discord events from the message broker. So if you take down one worker to update it, the other worker can still receive events, thus acheiving zero downtime.
 
 The microservices architecture is also very beneficial in the sense that you can scale your bot's components with ease. If your two workers are receiving a lot of load, simply add a third worker, for improved load balancing.
+If you so choose, you may even have your bot use different programming languages for each service. For example, you could have your gateway in Rust, and your workers in Golang. They will all come together with help from the message broker.
 
 ## Getting started
 This library features seveal important crates to help you get started.

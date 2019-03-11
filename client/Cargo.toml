@@ -2,6 +2,8 @@
 name = "spectacles"
 description = "A Discord library that simplifies the process of writing distributed Discord applications and services."
 readme = "README.md"
+keywords = ["discord", "distributed"]
+authors = ["Texlo-Dev <richrancy@gmail.com>"]
 repository = "https://github.com/spec-tacles/spectacles-rs"
 version = "0.1.0"
 edition = "2018"
