@@ -29,7 +29,7 @@ jobs:
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
         inputs:
-          githubConnection: my-account
+          githubConnection: 'my-account'
           repositoryName: 'spec-tacles/spectacles-rs'
           assetUploadMode: 'replace'
           target: '$(build.sourceVersion)'

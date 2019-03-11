@@ -30,7 +30,7 @@ jobs:
         displayName: 'Package GitHub release'
 
         inputs:
-          githubConnection: my-account
+          githubConnection: 'my-account'
           target: '$(build.sourceVersion)'
           tagSource: 'manual'
           tag: '$(build.my_tag)'
