@@ -43,7 +43,7 @@ impl AmqpBroker {
     ///     let addr = var("AMQP_ADDR").expect("No AMQP Address has been provided.");
     ///     let addr: SocketAddr = addr.parse().expect("Malformed URL provided.");
     ///     tokio::run({
-    ///         AmqpBroker::new(&addr, "mygroup", None)
+    ///         AmqpBroker::new(&addr, "mygroup".to_string(), None)
     ///         .map(|broker| {
     ///             /// Publish and subscribe to events here.
     ///         });

@@ -6,7 +6,7 @@
 //! - Integrates seamlessly with the spectacles-brokers package.
 //!
 //! ## About
-///  This crate allows you to interact with the Discord gateway. Please refer to the [Discord Gateway Docs](https://discordapp.com/developers/docs/topics/gateway) for more background on how to use this message.
+//! This crate allows you to interact with the Discord gateway. Please refer to the [Discord Gateway Docs](https://discordapp.com/developers/docs/topics/gateway) for more background on how to use this message.
 //!
 //! ## Example
 //! ```rust,norun
