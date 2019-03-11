@@ -28,18 +28,8 @@ jobs:
         displayName: 'Create tag variable.'
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
-<<<<<<< HEAD
         condition: startsWith(variables['Build.SourceBranch'], 'client/v')
         inputs:
           githubConnection: my-account
           repositoryName: spec-tacles-spectacles-rs
           assets: $(Build.ArtifactStagingDirectory)/*.zip
-=======
-        inputs:
-          target: '$(build.sourceVersion)'
-          tagSource: 'manual'
-          tag: '$(build.my_tag)'
-          githubConnection: my-account
-          repositoryName: spec-tacles/spectacles-rs
-          assets: $(Build.ArtifactStagingDirectory)/*.tar.gz
->>>>>>> d52e05e20a595b1bb4f630cbd2fb435f3e49d7ea
