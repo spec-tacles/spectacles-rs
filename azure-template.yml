@@ -25,11 +25,12 @@ jobs:
           MY_TAG=${MY_TAG#refs/tags/}
           echo $MY_TAG
           echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
-        displayName: "Create tag variable."
+        displayName: 'Create tag variable.'
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
         inputs:
           target: '$(build.sourceVersion)'
+          tagSource: 'manual'
           tag: '$(build.my_tag)'
           githubConnection: my-account
           repositoryName: spec-tacles-spectacles-rs
