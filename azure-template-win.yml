@@ -16,26 +16,12 @@ jobs:
           Invoke-WebRequest -Uri "https://win.rustup.rs" -OutFile "rustup-init.exe"
           &".\rustup-init.exe" --default-toolchain $(tc) -y
         displayName: 'Install Rust'
-
-      - powershell: |
-          MY_TAG="$(Build.SourceBranch)"
-          MY_TAG=${MY_TAG#refs/tags/}
-          echo $MY_TAG
-          echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
-        displayName: "Create tag variable."
-        
       - powershell: |
           &"$env:USERPROFILE\.cargo\bin\cargo" build -p spectacles --release
         displayName: 'Build Spectacles'
-
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
-
         inputs:
           githubConnection: 'my-account'
-          target: '$(build.sourceVersion)'
-          tagSource: 'manual'
-          tag: '$(build.my_tag)'
-          assetUploadMode: 'replace'
           repositoryName: 'spec-tacles/spectacles-rs'
           assets: $(Build.ArtifactStagingDirectory)/*.exe

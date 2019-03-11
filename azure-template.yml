@@ -14,27 +14,14 @@ jobs:
           curl -o rustup-init.sh https://sh.rustup.rs -sSf
           sh rustup-init.sh --default-toolchain $(tc) -y
         displayName: 'Install Rust'
-
-      - bash: |
-          MY_TAG="$(Build.SourceBranch)"
-          MY_TAG=${MY_TAG#refs/tags/}
-          echo $MY_TAG
-          echo "##vso[task.setvariable variable=build.my_tag]$MY_TAG"
-        displayName: 'Create tag variable.'
-
       - bash: |
           source $HOME/.cargo/env
           cargo build -p spectacles --release
           tar -zcvf spectacles-$(build.my_tag)-$(TARGET).tar.gz target/release/spectacles
         displayName: 'Build Spectacles'
-
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
         inputs:
-          githubConnection: 'my-account'
+          githubConnection: my-account
           repositoryName: 'spec-tacles/spectacles-rs'
-          assetUploadMode: 'replace'
-          target: '$(build.sourceVersion)'
-          tagSource: 'manual'
-          tag: '$(build.my_tag)'
-          assets: $(Build.ArtifactStagingDirectory)/*.tar.gz
+          assets: $(Build.ArtifactStagingDirectory)/*.zip
