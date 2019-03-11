@@ -16,9 +16,11 @@ jobs:
           Invoke-WebRequest -Uri "https://win.rustup.rs" -OutFile "rustup-init.exe"
           &".\rustup-init.exe" --default-toolchain $(tc) -y
         displayName: 'Install Rust'
+        
       - powershell: |
           &"$env:USERPROFILE\.cargo\bin\cargo" build -p spectacles --release
         displayName: 'Build Spectacles'
+      
       - powershell: |
           MY_TAG="$(Build.SourceBranch)"
           MY_TAG=${MY_TAG#refs/tags/}
@@ -30,8 +32,9 @@ jobs:
         displayName: 'Package GitHub release'
         condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
         inputs:
-          githubConnection: my-account
+          githubConnection: 'my-account'
           target: '$(build.sourceVersion)'
+          tagSource: 'manual'
           tag: '$(build.my_tag)'
           repositoryName: spec-tacles-spectacles-rs
           assets: $(Build.ArtifactStagingDirectory)/*.exe
