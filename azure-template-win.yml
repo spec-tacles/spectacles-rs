@@ -22,6 +22,6 @@ jobs:
       - task: GithubRelease@0
         displayName: 'Package GitHub release'
         inputs:
-          githubConnection: spec-tacles
+          githubConnection: my-account
           repositoryName: spec-tacles-spectacles-rs
           assets: $(Build.ArtifactStagingDirectory)/*.exe
