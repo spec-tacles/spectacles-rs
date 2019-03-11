@@ -20,7 +20,6 @@ jobs:
           &"$env:USERPROFILE\.cargo\bin\cargo" build -p spectacles --release
         displayName: 'Build Spectacles'
       - task: GithubRelease@0
-        displayName: 'Create GitHub Release'
         condition: startsWith(variables['Build.SourceBranch'], 'refs/client/release-')
         inputs:
           githubConnection: spec-tacles
