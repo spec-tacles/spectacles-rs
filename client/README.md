@@ -10,7 +10,7 @@ A standalone application for handling specific Spectacles tasks.
 This application features a built-in sharder which can publish all events received from the Discord API to a message broker.
 
 ```
-spectacles-shard 
+spectacles-shard
 Spawn Discord shards and publish events to a message broker.
 
 USAGE:
@@ -32,7 +32,7 @@ OPTIONS:
 
 For example, to spawn 5 shards with an AMQP group, you may do:
 ```
-spectacles shard -c 5 -g gateway -t YOURTOKEN HERE -u 127.0.0.0:5672
+spectacles shard -c 5 -g gateway -t YOURTOKEN HERE -u 127.0.0.1:5672
 ```
 
 You may also provide the following environment variables.
