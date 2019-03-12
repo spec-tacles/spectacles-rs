@@ -38,6 +38,11 @@ pub enum ShardStrategy {
     /// Spawns shards according to the amount specified, starting from shard 0.
     SpawnAmount(usize)
 }
+
+pub struct ShardMessage {
+
+}
+
 /// A collection of shards, keyed by their ID.
 pub type ShardMap = HashMap<usize, Arc<Mutex<Shard>>>;
 pub type MessageStream = UnboundedReceiver<(Arc<Mutex<Shard>>, TungsteniteMessage)>;
