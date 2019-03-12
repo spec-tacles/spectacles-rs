@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures::{future::Future, Stream};
-use futures_retry::RetryPolicy;
+use futures_backoff::Strategy;
 use lapin_futures::{
     channel::{
         BasicConsumeOptions,
@@ -15,7 +15,7 @@ use lapin_futures::{
         QueueDeclareOptions
     },
     client::{Client as AmqpClient, ConnectionOptions},
-    error::{Error as LapinError, ErrorKind as LapinErrorKind},
+    error::ErrorKind as LapinErrorKind,
     types::FieldTable,
 };
 use tokio::net::TcpStream;
@@ -55,22 +55,19 @@ impl AmqpBroker {
     /// ```
 
     pub fn new<'a>(addr: &SocketAddr, group: String, subgroup: Option<String>) -> impl Future<Item = AmqpBroker, Error = Error> + 'a {
-        TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
-            AmqpClient::connect(stream, ConnectionOptions::default())
-                /*.retry(|err| {
-                    match err.kind() {
-                        LapinErrorKind::ConnectionFailed(_) => {
-                            debug!("Connection to AMQP server failed; retrying in 10 seconds.");
-                            RetryPolicy::WaitRetry(Duration::from_millis(10))
-                        },
-                        _ => RetryPolicy::ForwardError(err)
-                    }
-                })*/
+        let retry_strategy = Strategy::exponential(Duration::from_secs(5))
+            .with_max_retries(15);
+        let (amqp, heartbeat) = retry_strategy.retry_if(|| {
+            TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
+                AmqpClient::connect(stream, ConnectionOptions::default())
                 .map_err(Error::from)
-        }).and_then(|(amqp, heartbeat)| {
-            tokio::spawn(heartbeat.map_err(|_| ()));
-            amqp.create_channel().map_err(Error::from)
-        }).and_then(move |channel| {
+            })
+        }, |err: &Error| match err {
+            Error::Lapin(_) => true,
+            _ => false
+        }).wait().unwrap();
+        tokio::spawn(heartbeat.map_err(|_| ()));
+        amqp.create_channel().map_err(Error::from).and_then(move |channel| {
             debug!("Created AMQP Channel With ID: {}", &channel.id);
             channel.exchange_declare(group.as_ref(), "direct", ExchangeDeclareOptions {
                 durable: true,
