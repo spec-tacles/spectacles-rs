@@ -65,6 +65,31 @@ pub struct Message {
     pub application: MessageApplication,
 }
 
+/// Represents a message that is being sent to Discord.
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct MessageBuilder {
+    content: Option<String>,
+    tts: Option<bool>
+}
+
+impl MessageBuilder {
+    pub fn new() -> MessageBuilder {
+        MessageBuilder {
+            content: None,
+            tts: None
+        }
+    }
+
+    pub fn content(mut self, string: String) -> Self {
+        self.content = Some(string);
+        self
+    }
+
+    pub fn tts(mut self, boolean: bool) -> Self {
+        self.tts = Some(boolean);
+        self
+    }
+}
 /// Represents an attachment sent by a user.
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct MessageAttachment {

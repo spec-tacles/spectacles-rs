@@ -20,15 +20,15 @@
 //! fn main() {
 //!     env_logger::init();
 //!     let token = var("DISCORD_TOKEN").expect("No Discord Token was provided.");
-//!     // tokio.run() boostraps our Tokio application.
-//!     current_thread:run({
+//!     // Here, we bootstrap our application.
+//!     current_thread::run({
 //!         // calling new() here return a new instance of the shard manager.
 //!         ShardManager::new(token, ManagerOptions {
 //!             strategy: ShardStrategy::Recommended,
 //!             handler: Handler
 //!         })
 //!         .and_then(|mut manager| manager.spawn()) // Begins spawning of shards.
-//!         .map_err(|err| error!("An error occured while processing shards: {:?}", err))
+//!         .map_err(|err| error!("An error occurred while processing shards: {:?}", err))
 //!     });
 //! }
 //! /// Here we define our Handler struct, which we implement the EventHandler trait for.
