@@ -15,12 +15,13 @@ use lapin_futures::{
         QueueDeclareOptions
     },
     client::{Client as AmqpClient, ConnectionOptions},
-    error::ErrorKind as LapinErrorKind,
     types::FieldTable,
 };
 use tokio::net::TcpStream;
 
 use crate::errors::Error;
+
+pub type Acker = Box<Future<Item = (), Error = ()> + Send + Sync>;
 
 /// Central AMQP message brokers client.
 #[derive(Clone)]
@@ -55,19 +56,20 @@ impl AmqpBroker {
     /// ```
 
     pub fn new<'a>(addr: &SocketAddr, group: String, subgroup: Option<String>) -> impl Future<Item = AmqpBroker, Error = Error> + 'a {
-        let retry_strategy = Strategy::exponential(Duration::from_secs(5))
-            .with_max_retries(15);
+        let retry_strategy = Strategy::fibonacci(Duration::from_secs(2))
+            .with_max_retries(10);
         let (amqp, heartbeat) = retry_strategy.retry_if(|| {
             TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
                 AmqpClient::connect(stream, ConnectionOptions::default())
-                .map_err(Error::from)
+                    .map_err(Error::from)
             })
         }, |err: &Error| match err {
-            Error::Lapin(_) => true,
+            Error::Lapin(_e) => true,
+            Error::Io(_e) => true,
             _ => false
         }).wait().unwrap();
-        tokio::spawn(heartbeat.map_err(|_| ()));
         amqp.create_channel().map_err(Error::from).and_then(move |channel| {
+            tokio::spawn(heartbeat.map_err(|_| ()));
             debug!("Created AMQP Channel With ID: {}", &channel.id);
             channel.exchange_declare(group.as_ref(), "direct", ExchangeDeclareOptions {
                 durable: true,
@@ -109,17 +111,21 @@ impl AmqpBroker {
     }
 
     /// Subscribes to the provided event, with a callback that is called when an event is received.
+    /// NOTE: Do not forget that you must manually acknowledge messages, as shown in the example below.
     /// # Example
     /// ```rust,norun
     /// AmqpBroker::new(&addr, "mygroup", None)
     ///    .map(|broker| {
-    ///         broker.subscribe("MESSAGE_CREATE", |message| {
+    ///         broker.subscribe("MESSAGE_CREATE", |(message, ack)| {
+    ///             tokio::spawn(ack);
     ///             println!("Message Event Received: {}");
     ///         });
     ///     })
     /// ```
     ///
-    pub fn subscribe<C: Fn(String) + Send + Sync + 'static>(self, evt: &'static str, callback: C) -> Self {
+    pub fn subscribe<C>(self, evt: &'static str, callback: C) -> Self
+    where C: Fn((String, Acker)) + Send + Sync + 'static
+    {
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
             None => format!("{}:{}", self.group, evt)
@@ -149,16 +155,15 @@ impl AmqpBroker {
             let channel = Arc::clone(&self.channel);
             move |stream| stream.for_each(move |message| {
                 debug!("Incoming message received from AMQP with a delivery tag of {}.", &message.delivery_tag);
-                tokio::spawn(channel.basic_ack(message.delivery_tag, false)
+                let acker = channel.basic_ack(message.delivery_tag, false)
                     .map(|_| {
                         debug!("Message acknowledge sent.");
                     })
                     .map_err(|err| {
                         error!("Failed to acknowledge message. {}", err);
-                    })
-                );
-                let decoded = std::str::from_utf8(&message.data).unwrap();
-                callback(decoded.to_string());
+                    });
+                let decoded = String::from_utf8(message.data.to_owned()).unwrap();
+                callback((decoded, Box::new(acker)));
                 futures::future::ok(())
             })
         }).map_err(Error::from);
