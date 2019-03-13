@@ -237,18 +237,21 @@ impl Shard {
     }
 
 
+    /// Change the status of the current shard.
     pub fn change_status(&mut self, status: Status) -> Result<()> {
         self.presence.status = status.to_string();
         let oldpresence = self.presence.clone();
         self.change_presence(oldpresence)
     }
 
+    /// Change the activity of the current shard.
     pub fn change_activity(&mut self, activity: ClientActivity) -> Result<()> {
         self.presence.game = Some(activity);
         let oldpresence = self.presence.clone();
         self.change_presence(oldpresence)
     }
 
+    /// Change the presence of the current shard.
     pub fn change_presence(&mut self, presence: ClientPresence) -> Result<()> {
         debug!("[Shard {}] Sending a presence change payload. {:?}", self.info[0], presence.clone());
         self.send_payload(presence.clone())?;

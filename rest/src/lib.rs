@@ -7,7 +7,7 @@ use spectacles_model::message::{Message, MessageBuilder};
 pub use crate::errors::{Error, Result};
 
 mod errors;
-mod views;
+mod routes;
 mod constants;
 
 /// The Main client which is used to interface with the various components of the Discord API.
@@ -23,17 +23,14 @@ pub struct RestClient {
 }
 
 impl RestClient {
-    pub fn new(token: String, use_ratelimit_bucket: bool) -> Result<Self> {
-        let mut headers = HeaderMap::new();
-        headers.insert("Authorization", token.parse().unwrap());
-        let client = ClientBuilder::new().default_headers(headers).build()?;
-
-       Ok(RestClient {
+    /// Creates a new REST client with the
+    pub fn new(token: String, use_ratelimit_bucket: bool) Self {
+        RestClient {
             token,
             base_url: constants::BASE_URL.to_string(),
             using_ratelimiter: use_ratelimit_bucket,
             http: client
-        })
+        }
     }
 
     pub fn set_base(mut self, url: String) -> Self {
@@ -44,7 +41,7 @@ impl RestClient {
     pub fn create_message(&self, channel_id: String, payload: MessageBuilder) -> impl Future<Item = Message, Error = Error> {
         let message = self.http.post(
             format!("{}/channels/{}/messages", constants::BASE_URL, channel_id).as_str()
-        ).json(&payload).send();
+        ).header("Authorization", self.token.clone()).json(&payload).send();
         message.and_then(|mut resp| resp.json::<Message>()).map_err(Error::from)
     }
 }

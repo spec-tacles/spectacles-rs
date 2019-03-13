@@ -27,7 +27,7 @@
 //!             strategy: ShardStrategy::Recommended,
 //!             handler: Handler
 //!         })
-//!         .and_then(|mut manager| manager.spawn()) // Begins spawning of shards.
+//!         .map(|manager| manager.begin_spawn()) // Begins spawning of shards.
 //!         .map_err(|err| error!("An error occurred while processing shards: {:?}", err))
 //!     });
 //! }
@@ -35,7 +35,7 @@
 //! /// The on_packet() trait method will be called when a packet is received from the Discord gateway.
 //! struct Handler;
 //! impl EventHandler for Handler {
-//!      fn on_packet(&self, shard: &Shard, pkt: ReceivePacket) {
+//!      fn on_packet(&self, shard: &mut Shard, pkt: ReceivePacket) {
 //!          println!("Received Gateway Packet from Shard {:?} - {:?}", shard.info, pkt);
 //!          // Do other things with message, such as sending it to a message broker.
 //!      }
