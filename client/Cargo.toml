@@ -19,5 +19,5 @@ log = "0.4.6"
 kankyo = "0.2.0"
 futures = "0.1.25"
 spectacles-gateway = { path = "../gateway", version = "0.2.0" }
-spectacles-brokers = { path = "../brokers", version = "1.1.2" }
+spectacles-brokers = { path = "../brokers", version = "1.1.5" }
 spectacles-model = { path = "../models", version = "0.1.3" }

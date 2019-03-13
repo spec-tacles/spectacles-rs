@@ -2,7 +2,7 @@
 name = "spectacles-brokers"
 description = "Message brokers which allow for powerful communication between Spectacles services."
 documentation = "https://docs.rs/spectacles-brokers/"
-version = "1.1.4"
+version = "1.1.5"
 keywords = ["discord", "spec"]
 readme = "README.md"
 license = "MIT"

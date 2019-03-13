@@ -58,15 +58,11 @@ impl AmqpBroker {
     pub fn new<'a>(addr: &SocketAddr, group: String, subgroup: Option<String>) -> impl Future<Item = AmqpBroker, Error = Error> + 'a {
         let retry_strategy = Strategy::fibonacci(Duration::from_secs(2))
             .with_max_retries(10);
-        let (amqp, heartbeat) = retry_strategy.retry_if(|| {
+        let (amqp, heartbeat) = retry_strategy.retry(|| {
             TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
                 AmqpClient::connect(stream, ConnectionOptions::default())
                     .map_err(Error::from)
             })
-        }, |err: &Error| match err {
-            Error::Lapin(_e) => true,
-            Error::Io(_e) => true,
-            _ => false
         }).wait().unwrap();
         amqp.create_channel().map_err(Error::from).and_then(move |channel| {
             tokio::spawn(heartbeat.map_err(|_| ()));
