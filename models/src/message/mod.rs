@@ -2,6 +2,7 @@
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::guild::GuildMember;
+use crate::snowflake::Snowflake;
 use crate::User;
 
 pub use self::embed::*;
@@ -16,12 +17,12 @@ mod emoji;
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Message {
     /// The message ID of the message.
-    pub id: String,
+    pub id: Snowflake,
     /// The ID of the channel that the message was sent in.
-    pub channel_id: String,
+    pub channel_id: Snowflake,
     /// The ID of the guild that the message was sent in.
     #[serde(default)]
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// The author of the message.
     pub author: User,
     /// The contents of this message.
@@ -38,7 +39,7 @@ pub struct Message {
     /// Whether or not this message mentioned everyone.
     pub mention_everyone: bool,
     /// Roles that were mentioned in this message.
-    pub mention_roles: Vec<String>,
+    pub mention_roles: Vec<Snowflake>,
     /// The message's attached files, if any.
     pub attachments: Vec<MessageAttachment>,
     /// Any embeds sent with this message.
@@ -48,12 +49,12 @@ pub struct Message {
     pub reactions: Vec<MessageReaction>,
     /// A snowflake used to validate that a message was sent.
     #[serde(default)]
-    pub nonce: Option<String>,
+    pub nonce: Option<Snowflake>,
     /// Whether or not the message is pinned.
     pub pinned: bool,
     /// The ID of the webhook if the message was sent by a webhook.
     #[serde(default)]
-    pub webhook_id: String,
+    pub webhook_id: Snowflake,
     /// The type of message sent.
     #[serde(rename = "type")]
     pub kind: MessageType,
@@ -94,7 +95,7 @@ impl MessageBuilder {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct MessageAttachment {
     /// The attachment ID.
-    pub id: String,
+    pub id: Snowflake,
     /// The name of the file attached.
     pub filename: String,
     /// The size of the file in bytes.
@@ -124,7 +125,7 @@ pub struct MessageActivity {
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct MessageApplication {
     /// The ID of the application.
-    pub id: String,
+    pub id: Snowflake,
     /// The ID of the embeds's image.
     pub cover_image: String,
     /// The application description.

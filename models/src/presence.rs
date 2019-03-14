@@ -5,6 +5,7 @@ use serde_json::Error as JsonError;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::gateway::{Opcodes, SendablePacket, SendPacket};
+use crate::Snowflake;
 
 /// Data about an activity that the user is participating in.
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
@@ -21,7 +22,7 @@ pub struct Activity {
     #[serde(default)]
     pub timestamps: ActivityTimestamps,
     /// The application ID for the game, if any.
-    pub application_id: String,
+    pub application_id: Snowflake,
     /// What the player is currently doing.
     pub details: Option<String>,
     /// The user's current party status.

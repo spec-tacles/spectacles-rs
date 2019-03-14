@@ -1,8 +1,9 @@
 use std::fmt;
-use serde::{de, de::{Visitor, Deserializer}, Deserialize};
+
+use serde::{de, de::{Deserializer, Visitor}, Deserialize};
 use serde::ser::{Serialize, Serializer};
 
-/// Represents a Twitter snowflake used as IDs in various Discord
+/// Represents a Twitter snowflake used as IDs in various Discord objects.
 #[derive(Default, Debug, Clone)]
 pub struct Snowflake(pub u64);
 

@@ -2,12 +2,13 @@
 use chrono::{DateTime, FixedOffset};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::{User, Snowflake};
+use crate::{Snowflake, User};
+
 /// A guild or DM channel on Discord.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Channel {
     /// The channel ID of this channel.
-    pub id: String,
+    pub id: Snowflake,
     /// The type of channel.
     #[serde(rename = "type")]
     pub kind: Option<ChannelType>,
@@ -49,13 +50,13 @@ pub struct Channel {
     pub icon: Option<String>,
     /// The ID of the creator, if a DM.
     #[serde(default)]
-    pub owner_id: String,
+    pub owner_id: Snowflake,
     /// The application ID, if the channel was created by a bot.
     #[serde(default)]
-    pub application_id: String,
+    pub application_id: Snowflake,
     /// The ID of the parent category.
     #[serde(default)]
-    pub parent_id: Option<String>,
+    pub parent_id: Option<Snowflake>,
     /// When the last message was pinned.
     #[serde(default)]
     pub last_pin_timestamp: Option<DateTime<FixedOffset>>
@@ -65,7 +66,7 @@ pub struct Channel {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct PermissionOverwrites {
     /// The ID of the role or user.
-    pub id: String,
+    pub id: Snowflake,
     /// What this ID is for.
     #[serde(rename = "type")]
     pub kind: String,

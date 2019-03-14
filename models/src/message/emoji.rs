@@ -1,15 +1,15 @@
-use crate::User;
+use crate::{Snowflake, User};
 
 /// A Discord emote than can be used to react to messages.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Emoji {
     /// The ID of the emoji.
-    pub id: String,
+    pub id: Snowflake,
     /// The name of the emoji.
     pub name: String,
     /// The roles that the emoji is whitelisted to.
     #[serde(default)]
-    pub roles: Vec<String>,
+    pub roles: Vec<Snowflake>,
     /// The user who created this emoji.
     #[serde(default)]
     pub user: User,

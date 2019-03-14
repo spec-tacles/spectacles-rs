@@ -1,5 +1,6 @@
 //! Structures for interfacing with Discord's voice related features.
 use crate::guild::GuildMember;
+use crate::snowflake::Snowflake;
 
 /// Represents a user's voice connection status.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -8,7 +9,7 @@ pub struct VoiceState {
     #[serde(default)]
     pub guild_id: String,
     /// The channel ID of the channel the user is connected to.
-    pub channel_id: Option<String>,
+    pub channel_id: Option<Snowflake>,
     /// The user ID of the user this voice state belongs to.
     pub user_id: String,
     /// The guild member that this voice state belongs to.

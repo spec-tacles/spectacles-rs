@@ -33,7 +33,7 @@ impl RestClient {
         }
     }
 
-    pub fn set_base(mut self, url: String) -> Self {
+    pub fn set_base_url(mut self, url: String) -> Self {
         self.base_url = url;
         self
     }

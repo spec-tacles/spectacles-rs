@@ -6,8 +6,8 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
     guild::UnavailableGuild,
-    Snowflake,
     presence::{Activity, ClientPresence},
+    Snowflake,
     User
 };
 
@@ -99,7 +99,7 @@ pub struct HelloPacket {
     /// The heartbeat interval that the shard should follow.
     pub heartbeat_interval: u64,
     /// An array of the client's guilds, used for debugging.
-    pub _trace: Vec<String>
+    pub _trace: Vec<Snowflake>
 }
 
 /// A packet used to resume a gateway connection.
@@ -135,9 +135,9 @@ pub struct RequestGuildMembers {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateVoiceState {
     /// The guild ID of the guild.
-    guild_id: u64,
+    guild_id: Snowflake,
     /// The channel ID of the voice channel.
-    channel_id: Option<u64>,
+    channel_id: Snowflake,
     /// Whether or not to mute the current user.
     self_mute: bool,
     /// Whether or not to deafen the current user.
@@ -219,7 +219,7 @@ pub struct ReadyPacket {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResumedPacket {
     /// The guilds that a user is in, used for debugging.
-    pub _trace: Vec<String>
+    pub _trace: Vec<Snowflake>
 
 }
 #[derive(Debug, Deserialize, Serialize, Clone)]

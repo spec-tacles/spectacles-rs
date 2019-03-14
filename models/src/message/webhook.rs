@@ -1,14 +1,14 @@
-use crate::User;
+use crate::{Snowflake, User};
 
 /// A simple solution to post messages in Discord channels from external sources.
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Webhook {
     /// The webhook ID of this webhook.
-    pub id: String,
+    pub id: Snowflake,
     /// The guild ID of the guild which the webhook belongs to.
     pub guild_id: String,
     /// The channel ID of the channel which the webhook belongs to.
-    pub channel_id: String,
+    pub channel_id: Snowflake,
     /// The user who created this webhook.
     #[serde(default)]
     pub user: User,
