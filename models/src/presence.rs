@@ -52,7 +52,7 @@ impl Activity {
             kind,
             url: url.to_string(),
             timestamps: ActivityTimestamps::default(),
-            application_id: String::new(),
+            application_id: Snowflake::default(),
             details: None,
             state: None,
             party: ActivityParty::default(),
