@@ -1,8 +1,10 @@
+use crate::Snowflake;
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 /// Represents a User on Discord.
 pub struct User {
     /// The Snowflake ID of this user.
-    pub id: String,
+    pub id: Snowflake,
     /// The username of this user.
     pub username: String,
     /// The four-digit number following the user's username.

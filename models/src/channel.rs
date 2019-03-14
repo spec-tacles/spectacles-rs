@@ -2,8 +2,7 @@
 use chrono::{DateTime, FixedOffset};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::User;
-
+use crate::{User, Snowflake};
 /// A guild or DM channel on Discord.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Channel {
@@ -14,7 +13,7 @@ pub struct Channel {
     pub kind: Option<ChannelType>,
     /// The guild ID of this channel.
     #[serde(default)]
-    pub guild_id: Option<String>,
+    pub guild_id: Option<Snowflake>,
     /// The position of this channel.
     #[serde(default)]
     pub position: i32,
@@ -32,7 +31,7 @@ pub struct Channel {
     pub nsfw: bool,
     /// The ID of the last message sent in this channel.
     #[serde(default)]
-    pub last_message_id: Option<String>,
+    pub last_message_id: Option<Snowflake>,
     /// The bitrate of this channel.
     #[serde(default)]
     pub bitrate: i32,

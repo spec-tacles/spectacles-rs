@@ -6,6 +6,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
     guild::UnavailableGuild,
+    Snowflake,
     presence::{Activity, ClientPresence},
     User
 };
@@ -122,7 +123,7 @@ pub struct HeartbeatPacket {
 /// A Request guild members packet.
 pub struct RequestGuildMembers {
     /// The guild ID to get members for.
-    guild_id: String,
+    guild_id: Snowflake,
     /// A string that the username starts with. If omitted, returns all members.
     query: String,
     /// The maximum number of members to send. If omitted, requests all members.

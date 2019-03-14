@@ -1,6 +1,6 @@
 use futures::future::Future;
 use reqwest::header::HeaderMap;
-use reqwest::r#async::{Client as ReqwestClient, ClientBuilder};
+use reqwest::r#async::Client as ReqwestClient;
 
 use spectacles_model::message::{Message, MessageBuilder};
 
@@ -24,24 +24,17 @@ pub struct RestClient {
 
 impl RestClient {
     /// Creates a new REST client with the
-    pub fn new(token: String, use_ratelimit_bucket: bool) Self {
+    pub fn new(token: String, use_ratelimit_bucket: bool) -> Self {
         RestClient {
             token,
             base_url: constants::BASE_URL.to_string(),
             using_ratelimiter: use_ratelimit_bucket,
-            http: client
+            http: ReqwestClient::new()
         }
     }
 
     pub fn set_base(mut self, url: String) -> Self {
         self.base_url = url;
         self
-    }
-
-    pub fn create_message(&self, channel_id: String, payload: MessageBuilder) -> impl Future<Item = Message, Error = Error> {
-        let message = self.http.post(
-            format!("{}/channels/{}/messages", constants::BASE_URL, channel_id).as_str()
-        ).header("Authorization", self.token.clone()).json(&payload).send();
-        message.and_then(|mut resp| resp.json::<Message>()).map_err(Error::from)
     }
 }

@@ -3,6 +3,7 @@
 #[macro_use] extern crate serde_derive;
 
 pub use user::User;
+pub use snowflake::*;
 
 mod user;
 pub mod guild;
@@ -12,3 +13,4 @@ pub mod invite;
 pub mod gateway;
 pub mod presence;
 pub mod message;
+pub mod snowflake;
