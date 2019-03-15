@@ -36,9 +36,9 @@ impl RouteManager {
             .map_err(Error::from)
     }
 
-    fn post<T, S>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
-        where T: DeserializeOwned + Send + 'static,
-              S: Serialize + Send
+    fn post<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
+        where S: Serialize + Send,
+        T: DeserializeOwned + Send + 'static,
     {
         let url = format!("{}{}", BASE_URL, route);
         self.http.post(url.as_str()).json(&body).send()
@@ -46,17 +46,32 @@ impl RouteManager {
             .map_err(Error::from)
     }
 
-    /*fn patch<T>(&self, route: String, body: B) {
-
+    fn patch<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
+        where S: Serialize + Send,
+        T: DeserializeOwned + Send + 'static,
+    {
+        let url = format!("{}{}", BASE_URL, route);
+        self.http.patch(url.as_str()).json(&body).send()
+            .and_then(|mut res| res.json::<T>())
+            .map_err(Error::from)
     }
 
-    fn put<T>(&self, route: String, body: B) {
-
+    fn put<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
+        where S: Serialize + Send,
+        T: DeserializeOwned + Send + 'static,
+    {
+        let url = format!("{}{}", BASE_URL, route);
+        self.http.put(url.as_str()).json(&body).send()
+            .and_then(|mut res| res.json::<T>())
+            .map_err(Error::from)
     }
 
-    fn delete<B>(&self, route: String, body: B) {
-
+    fn delete<T>(&self, route: String) -> impl Future<Item=T, Error=Error>
+        where T: DeserializeOwned + Send + 'static,
+    {
+        let url = format!("{}{}", BASE_URL, route);
+        self.http.delete(url.as_str()).send()
+            .and_then(|mut res| res.json::<T>())
+            .map_err(Error::from)
     }
-
-    */
 }
