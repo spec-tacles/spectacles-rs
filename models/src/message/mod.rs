@@ -68,29 +68,29 @@ pub struct Message {
 
 /// Represents a message that is being sent to Discord.
 #[derive(Serialize, Clone, Debug, Default)]
-pub struct MessageBuilder {
+pub struct CreateMessage {
+    /// The content of this message.
+    #[serde(skip_serializing_if = "Option::is_none")]
     content: Option<String>,
-    tts: Option<bool>
+    /// The embed that this message has.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    embed: Option<Embed>,
+    /// Whether or not this message is a TTS message.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tts: Option<bool>,
 }
 
-impl MessageBuilder {
-    pub fn new() -> MessageBuilder {
-        MessageBuilder {
-            content: None,
+impl CreateMessage {
+    /// Creates a new message with the specified content string.
+    pub fn with_content(content: &str) -> CreateMessage {
+        CreateMessage {
+            content: Some(content.to_string()),
+            embed: None,
             tts: None
         }
     }
-
-    pub fn content(mut self, string: String) -> Self {
-        self.content = Some(string);
-        self
-    }
-
-    pub fn tts(mut self, boolean: bool) -> Self {
-        self.tts = Some(boolean);
-        self
-    }
 }
+
 /// Represents an attachment sent by a user.
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct MessageAttachment {
