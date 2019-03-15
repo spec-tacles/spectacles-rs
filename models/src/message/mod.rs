@@ -82,14 +82,69 @@ pub struct CreateMessage {
 
 impl CreateMessage {
     /// Creates a new message with the specified content string.
-    pub fn with_content(content: &str) -> CreateMessage {
+    pub fn new() -> Self {
         CreateMessage {
-            content: Some(content.to_string()),
+            content: None,
             embed: None,
             tts: None
         }
     }
+
+    /// Adds content to the message.
+    pub fn with_content(mut self, content: &str) -> Self {
+        self.content = Some(content.to_string());
+
+        self
+    }
+
+    /// Adds an Embed object to the message.
+    pub fn with_embed(mut self, embed: Embed) -> Self {
+        self.embed = Some(embed);
+
+        self
+    }
+
+    /// Whether or not this message will be a TTS message.
+    pub fn tts(mut self, opt: bool) -> Self {
+        self.tts = Some(opt);
+
+        self
+    }
 }
+
+/// Represents a message that is being edited in a Discord channel.
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct EditMessage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    embed: Option<Embed>
+}
+
+impl EditMessage {
+    pub fn new() -> EditMessage {
+        EditMessage {
+            content: None,
+            embed: None
+        }
+    }
+
+    /// Adds the content to edit into this message.
+    pub fn with_content(mut self, content: &str) -> Self {
+        self.content = Some(content.to_string());
+
+        self
+    }
+
+
+    /// Adds an embed to be edited into this message.
+    pub fn with_embed(mut self, embed: Embed) -> Self {
+        self.embed = Some(embed);
+
+        self
+    }
+}
+
 
 /// Represents an attachment sent by a user.
 #[derive(Deserialize, Serialize, Clone, Debug)]

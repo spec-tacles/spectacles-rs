@@ -98,8 +98,8 @@ pub struct IdentifyProperties {
 pub struct HelloPacket {
     /// The heartbeat interval that the shard should follow.
     pub heartbeat_interval: u64,
-    /// An array of the client's guilds, used for debugging.
-    pub _trace: Vec<Snowflake>
+    /// An array of servers that the client is connected to.
+    pub _trace: Vec<String>
 }
 
 /// A packet used to resume a gateway connection.
@@ -218,8 +218,8 @@ pub struct ReadyPacket {
 /// This packet is received when the client resumes an existing session.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResumedPacket {
-    /// The guilds that a user is in, used for debugging.
-    pub _trace: Vec<Snowflake>
+    /// The servers that the client is connected to.
+    pub _trace: Vec<String>
 
 }
 #[derive(Debug, Deserialize, Serialize, Clone)]
