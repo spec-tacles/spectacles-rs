@@ -60,10 +60,10 @@ pub struct Message {
     pub kind: MessageType,
     /// Message Activity sent with rich-presence embeds.
     #[serde(default)]
-    pub activity: MessageActivity,
+    pub activity: Option<MessageActivity>,
     /// Message Application ent with Rich Presence embeds.
     #[serde(default)]
-    pub application: MessageApplication,
+    pub application: Option<MessageApplication>,
 }
 
 /// Represents a message that is being sent to Discord.

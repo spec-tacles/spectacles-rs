@@ -3,42 +3,43 @@
 pub struct Embed {
     /// The title of the embed.
     #[serde(default)]
-    pub title: String,
+    pub title: Option<String>,
     /// The type of embed.
     #[serde(default, rename = "type")]
-    pub kind: String,
+    pub kind: Option<String>,
     /// The description of the embed.
     #[serde(default)]
-    pub description: String,
+    pub description: Option<String>,
     /// The URL of the embed.
     #[serde(default)]
-    pub url: String,
+    pub url: Option<String>,
     /// The timestamp of the embed.
     #[serde(default)]
-    pub timestamp: String,
+    pub timestamp: Option<String>,
     /// The color of the embed.
     #[serde(default)]
-    pub color: i32,
+    pub color: Option<i32>,
     /// Information about the embed's footer.
     #[serde(default)]
-    pub footer: EmbedFooter,
+    pub footer: Option<EmbedFooter>,
     /// Information about the embed's image.
     #[serde(default)]
-    pub image: EmbedImage,
+    pub image: Option<EmbedImage>,
     /// Information about the embed's thumbnail.
     #[serde(default)]
-    pub thumbnail: EmbedThumbnail,
+    pub thumbnail: Option<EmbedThumbnail>,
     /// Information about an embed's video, if applicable.
     #[serde(default)]
-    pub video: EmbedVideo,
+    pub video: Option<EmbedVideo>,
     /// Information about an embed's provider if applicable.
     #[serde(default)]
-    pub provider: EmbedProvider,
+    pub provider: Option<EmbedProvider>,
     /// Information about the embed's author.
     #[serde(default)]
-    pub author: EmbedAuthor,
+    pub author: Option<EmbedAuthor>,
     /// Information about the embed's fields.
-    pub fields: EmbedField
+    #[serde(default)]
+    pub fields: Option<EmbedField>
 }
 
 /// An Embed Footer data object.
@@ -60,16 +61,16 @@ pub struct EmbedFooter {
 pub struct EmbedImage {
     /// The source URL of the image.
     #[serde(default)]
-    pub url: String,
+    pub url: Option<String>,
     /// A proxied URL of the image.
     #[serde(default)]
-    pub proxy_url: String,
+    pub proxy_url: Option<String>,
     /// The height of the image.
     #[serde(default)]
-    pub height: i32,
+    pub height: Option<i32>,
     /// The width of the image.
     #[serde(default)]
-    pub width: i32
+    pub width: Option<i32>
 }
 
 /// An Embed Thumbnail data object.
@@ -77,16 +78,16 @@ pub struct EmbedImage {
 pub struct EmbedThumbnail {
     /// The source URL of the thumbnail.
     #[serde(default)]
-    pub url: String,
+    pub url: Option<String>,
     #[serde(default)]
     /// A proxied URL of the thumbnail.
-    pub proxy_url: String,
+    pub proxy_url: Option<String>,
     /// The height of the thumbnail.
     #[serde(default)]
-    pub height: i32,
+    pub height: Option<i32>,
     /// The width of the thumbnail.
     #[serde(default)]
-    pub width: i32
+    pub width: Option<i32>
 }
 
 /// An Embed Video data object.
@@ -94,13 +95,13 @@ pub struct EmbedThumbnail {
 pub struct EmbedVideo {
     /// The source URL of the video.
     #[serde(default)]
-    pub url: String,
+    pub url: Option<String>,
     /// The height of the video.
     #[serde(default)]
-    pub height: i32,
+    pub height: Option<i32>,
     /// The width of the thumbnail.
     #[serde(default)]
-    pub width: i32
+    pub width: Option<i32>
 }
 
 /// Information about the embed's provider.
@@ -108,10 +109,10 @@ pub struct EmbedVideo {
 pub struct EmbedProvider {
     /// The name of the provider.
     #[serde(default)]
-    pub name: String,
+    pub name: Option<String>,
     /// The url of the provider.
     #[serde(default)]
-    pub url: String
+    pub url: Option<String>
 }
 
 /// Information about the embed's author.
@@ -119,16 +120,16 @@ pub struct EmbedProvider {
 pub struct EmbedAuthor {
     /// The name of the author.
     #[serde(default)]
-    pub name: String,
+    pub name: Option<String>,
     /// The URL of the author.
     #[serde(default)]
-    pub url: String,
+    pub url: Option<String>,
     /// The URL of the author's icon.
     #[serde(default)]
-    pub icon_url: String,
+    pub icon_url: Option<String>,
     /// A proxied version of the author's icon.
     #[serde(default)]
-    pub proxy_icon_url: String
+    pub proxy_icon_url: Option<String>
 }
 
 /// Represents an Embed Field object.
@@ -140,5 +141,5 @@ pub struct EmbedField {
     pub value: String,
     /// Whether or not this field should display as inline.
     #[serde(default)]
-    pub inline: bool
+    pub inline: Option<bool>
 }

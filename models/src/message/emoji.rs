@@ -4,7 +4,7 @@ use crate::{Snowflake, User};
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Emoji {
     /// The ID of the emoji.
-    pub id: Snowflake,
+    pub id: Option<Snowflake>,
     /// The name of the emoji.
     pub name: String,
     /// The roles that the emoji is whitelisted to.
@@ -12,16 +12,16 @@ pub struct Emoji {
     pub roles: Vec<Snowflake>,
     /// The user who created this emoji.
     #[serde(default)]
-    pub user: User,
+    pub user: Option<User>,
     /// Whether or not this emoji must be wrapped in colons.
     #[serde(default)]
-    pub require_colons: bool,
+    pub require_colons: Option<bool>,
     /// Whether or not this emoji is managed.
     #[serde(default)]
-    pub managed: bool,
+    pub managed: Option<bool>,
     /// Whether or not this emoji is animated.
     #[serde(default)]
-    pub animated: bool
+    pub animated: Option<bool>
 }
 
 /// A reaction on a message.

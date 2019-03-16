@@ -17,43 +17,43 @@ pub struct Channel {
     pub guild_id: Option<Snowflake>,
     /// The position of this channel.
     #[serde(default)]
-    pub position: i32,
+    pub position: Option<i32>,
     /// The explicit permission overwrites for members and roles.
     #[serde(default)]
-    pub permission_overwrites: PermissionOverwrites,
+    pub permission_overwrites: Option<PermissionOverwrites>,
     /// The name of the channel.
     #[serde(default)]
-    pub name: String,
+    pub name: Option<String>,
     /// The topic of this channel.
     #[serde(default)]
     pub topic: Option<String>,
     /// Whether or not this channel is an NSFW channel.
     #[serde(default)]
-    pub nsfw: bool,
+    pub nsfw: Option<bool>,
     /// The ID of the last message sent in this channel.
     #[serde(default)]
     pub last_message_id: Option<Snowflake>,
     /// The bitrate of this channel.
     #[serde(default)]
-    pub bitrate: i32,
+    pub bitrate: Option<i32>,
     /// The user limit, if voice.
     #[serde(default)]
-    pub user_limit: i32,
+    pub user_limit: Option<i32>,
     /// The cooldown between sending messages in this channel, in seconds.
     #[serde(default)]
-    pub rate_limit_per_user: i32,
+    pub rate_limit_per_user: Option<i32>,
     /// The recepients, if DM.
     #[serde(default)]
-    pub recipients: Vec<User>,
+    pub recipients: Option<Vec<User>>,
     /// The channel's icon hash if any.
     #[serde(default)]
     pub icon: Option<String>,
     /// The ID of the creator, if a DM.
     #[serde(default)]
-    pub owner_id: Snowflake,
+    pub owner_id: Option<Snowflake>,
     /// The application ID, if the channel was created by a bot.
     #[serde(default)]
-    pub application_id: Snowflake,
+    pub application_id: Option<Snowflake>,
     /// The ID of the parent category.
     #[serde(default)]
     pub parent_id: Option<Snowflake>,
