@@ -17,9 +17,7 @@ fn main() {
     let result = connect.map(|broker| {
         // Now, we will subscribe and listen for the event we publish in the consumer.
         // We provide a callback function to the subscribe() method, which will be called when a message is received.
-        broker.subscribe("HELLO", |(payload, ack)| {
-            // For each message we receive, we must acknowledge it with the AMQP server.
-            tokio::spawn(ack);
+        broker.subscribe("HELLO", |payload| {
             println!("Received Message: {}", payload);
         });
     }).map_err(|err| {

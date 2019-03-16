@@ -105,14 +105,12 @@ impl AmqpBroker {
     }
 
     /// Subscribes to the provided event, with a callback that is called when an event is received.
-    /// NOTE: Do not forget that you must manually acknowledge messages, as shown in the example below.
     /// # Example
     /// ```rust,norun
     /// AmqpBroker::new(&addr, "mygroup", None)
     ///    .map(|broker| {
-    ///         broker.subscribe("MESSAGE_CREATE", |(message, ack)| {
-    ///             tokio::spawn(ack);
-    ///             println!("Message Event Received: {}");
+    ///         broker.subscribe("MESSAGE_CREATE", |payload| {
+    ///             println!("Message Event Received: {}", payload);
     ///         });
     ///     })
     /// ```
