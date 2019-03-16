@@ -62,6 +62,86 @@ pub struct Channel {
     pub last_pin_timestamp: Option<DateTime<FixedOffset>>
 }
 
+/// Options for modifying a Discord channel.
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct ModifyChannel {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    position: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    topic: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    nsfw: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rate_limit_per_user: Option<i8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bitrate: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_limit: Option<i32>,
+    /*#[serde(skip_serializing_if = "Option::is_none")]
+    permission_overwrites: Option<Vec<PermissionOverwrites>>,*/
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parent_id: Option<Snowflake>
+}
+
+impl ModifyChannel {
+    pub fn new() -> Self {
+        ModifyChannel::default()
+    }
+
+    /// Sets a new name for this channel.
+    pub fn name(mut self, new_name: &str) -> Self {
+        self.name = Some(new_name.to_string());
+        self
+    }
+
+    /// Sets a new position for this channel.
+    pub fn set_position(mut self, pos: i32) -> Self {
+        self.position = Some(pos);
+        self
+    }
+
+    /// Sets a new topic for this channel.
+    pub fn topic(mut self, top: &str) -> Self {
+        self.topic = Some(top.to_string());
+        self
+    }
+
+    /// Changes the NSFW flag for this channel.
+    pub fn nsfw(mut self, opt: bool) -> Self {
+        self.nsfw = Some(opt);
+        self
+    }
+
+    /// Modifies this channel's message rate limit per user.
+    pub fn rate_limit_per_user(mut self, secs: i8) -> Self {
+        self.rate_limit_per_user = Some(secs);
+        self
+    }
+
+    /// Modifies this channel's user limit, if a voice channel.
+    pub fn user_limit(mut self, limit: i32) -> Self {
+        self.user_limit = Some(limit);
+        self
+    }
+
+    /*
+    /// Modifies this channel's permission overwrites.
+    pub fn overwrites(mut self, ows: Vec<PermissionOverwrites>) -> Self {
+        self.permission_overwrites = Some(ows);
+        self
+    }
+    */
+
+    /// Modifies this channel's parent category ID.
+    pub fn parent_id(mut self, id: u64) -> Self {
+        self.parent_id = Some(id.into());
+        self
+    }
+
+
+}
 /// A channel permission overwrite.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct PermissionOverwrites {

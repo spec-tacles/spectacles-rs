@@ -5,6 +5,10 @@
 pub use user::User;
 pub use snowflake::*;
 
+#[derive(Serialize)]
+pub struct NoQuery;
+
+
 mod user;
 pub mod guild;
 pub mod channel;

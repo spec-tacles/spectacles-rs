@@ -145,6 +145,57 @@ impl EditMessage {
     }
 }
 
+/// Options for retrieving messages from a channel.
+#[derive(Serialize, Clone, Debug)]
+pub struct ChannelMessagesQuery {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    around: Option<Snowflake>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<Snowflake>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    after: Option<Snowflake>,
+    limit: i32
+}
+
+impl ChannelMessagesQuery {
+    pub fn new() -> ChannelMessagesQuery {
+        ChannelMessagesQuery {
+            around: None,
+            before: None,
+            after: None,
+            limit: 50
+        }
+    }
+
+
+    /// Fetch messages from this channel that are around this message ID.
+    pub fn around(mut self, id: u64) -> Self {
+        if self.after.is_some() || self.before.is_some() {
+            return self;
+        };
+        self.around = Some(id.into());
+        self
+    }
+
+    /// Fetch messages from this channel that are before this message ID.
+    pub fn before(mut self, id: u64) -> Self {
+        if self.around.is_some() || self.after.is_some() {
+            return self;
+        };
+        self.before = Some(id.into());
+        self
+    }
+
+    /// Fetch messages in this channels that are after this message ID.
+    pub fn after(mut self, id: u64) -> Self {
+        if self.around.is_some() || self.before.is_some() {
+            return self;
+        };
+        self.after = Some(id.into());
+        self
+    }
+}
+
 
 /// Represents an attachment sent by a user.
 #[derive(Deserialize, Serialize, Clone, Debug)]
