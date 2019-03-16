@@ -148,7 +148,7 @@ impl AmqpBroker {
             move |stream| stream.for_each(move |message| {
                 debug!("Incoming message received from AMQP with a delivery tag of {}.", &message.delivery_tag);
                 let decoded = String::from_utf8(message.data.to_owned()).unwrap();
-                callback(decoded);
+                let _ = callback(decoded);
                 channel.basic_ack(message.delivery_tag, false)
             })
         }).map_err(Error::from);

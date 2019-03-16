@@ -20,7 +20,7 @@ pub struct VoiceState {
     /// Whether or not the user is deafened on the server.
     pub deaf: bool,
     /// Whether or not the user is muted on the server.
-    pub muted: bool,
+    pub mute: bool,
     /// Whether or not the user is locally deaf.
     pub self_deaf: bool,
     /// Whether or not the user is locally muted.
