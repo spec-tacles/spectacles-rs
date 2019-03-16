@@ -21,8 +21,6 @@ use tokio::net::TcpStream;
 
 use crate::errors::Error;
 
-pub type Acker = Box<Future<Item = (), Error = ()> + Send + Sync>;
-
 /// Central AMQP message brokers client.
 #[derive(Clone)]
 pub struct AmqpBroker {
@@ -120,7 +118,7 @@ impl AmqpBroker {
     /// ```
     ///
     pub fn subscribe<C>(self, evt: &'static str, callback: C) -> Self
-    where C: Fn((String, Acker)) + Send + Sync + 'static
+        where C: Fn(String) + Send + Sync + 'static
     {
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
@@ -151,16 +149,9 @@ impl AmqpBroker {
             let channel = Arc::clone(&self.channel);
             move |stream| stream.for_each(move |message| {
                 debug!("Incoming message received from AMQP with a delivery tag of {}.", &message.delivery_tag);
-                let acker = channel.basic_ack(message.delivery_tag, false)
-                    .map(|_| {
-                        debug!("Message acknowledge sent.");
-                    })
-                    .map_err(|err| {
-                        error!("Failed to acknowledge message. {}", err);
-                    });
                 let decoded = String::from_utf8(message.data.to_owned()).unwrap();
-                callback((decoded, Box::new(acker)));
-                futures::future::ok(())
+                callback(decoded);
+                channel.basic_ack(message.delivery_tag, false)
             })
         }).map_err(Error::from);
         tokio::spawn(future.map_err(move |err| {
@@ -169,6 +160,4 @@ impl AmqpBroker {
 
         self
     }
-
-
 }
