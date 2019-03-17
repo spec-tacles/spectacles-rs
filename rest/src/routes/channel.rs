@@ -9,6 +9,7 @@ use crate::routes::RouteManager;
 /// Routes pertaining to channels in the Discord API.
 pub struct ChannelsView {
     pub id: u64,
+    pub messages: ChannelMessagesView,
     pub router: RouteManager,
 }
 
@@ -43,9 +44,13 @@ impl ChannelsView {
         self.router.get::<Message>(route)
     }
 
-    /// Deletes this channel from Discord.
+    /// Deletes this channel from Discord, or in the case of a direct messages, closes the channel.
     pub fn delete(&self) -> impl Future<Item = Channel, Error = Error> {
         let route = format!("/channels/{}", self.id);
         self.router.delete::<Channel>(route)
     }
+}
+
+pub struct ChannelMessagesView {
+    
 }
