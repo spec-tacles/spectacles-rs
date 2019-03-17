@@ -9,7 +9,7 @@ use crate::routes::RouteManager;
 /// Routes pertaining to channels in the Discord API.
 pub struct ChannelsView {
     pub id: u64,
-    pub messages: ChannelMessagesView,
+    // pub messages: ChannelMessagesView,
     pub router: RouteManager,
 }
 
@@ -52,5 +52,5 @@ impl ChannelsView {
 }
 
 pub struct ChannelMessagesView {
-    
+
 }
