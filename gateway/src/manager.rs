@@ -176,6 +176,10 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
             };
             if let Some(GatewayEvent::READY) = event.t {
                 &(self).queue();
+                tokio::spawn({
+                    opts.handler.on_shard_ready(&mut shard);
+                    futures::future::ok(())
+                });
             };
 
             futures::future::ok(())

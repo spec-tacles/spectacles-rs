@@ -70,4 +70,6 @@ where H: EventHandler + Send + Sync
 pub trait EventHandler {
     /// Executed whenever a raw packet is received.
     fn on_packet(&self, _shard: &mut Shard, _pkt: ReceivePacket);
+    /// Executed when a shard emits a ready event.
+    fn on_shard_ready(&self, _shard: &mut Shard);
 }
