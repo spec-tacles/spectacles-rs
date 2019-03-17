@@ -144,6 +144,28 @@ pub struct UpdateVoiceState {
     self_deaf: bool
 }
 
+/// A packet sent to indicate a status update.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UpdateStatus {
+    /// Milliseconds since the client went idle.
+    since: Option<i32>,
+    /// The activity object to set.
+    game: Option<Activity>,
+    /// The status object to set.
+    status: String,
+    /// Whether or not the client is AFK.
+    afk: bool
+}
+
+impl SendablePacket for UpdateStatus {
+    fn to_json(self) -> Result<String, JsonError> {
+        serde_json::to_string(&UpdateStatus {
+            op: Opcodes::StatusUpdate,
+            d: self
+        })
+    }
+}
+
 
 impl SendablePacket for IdentifyPacket {
     fn to_json(self) -> Result<String, JsonError> {
@@ -179,18 +201,6 @@ impl SendablePacket for ResumeSessionPacket {
             d: self
         })
     }
-}
-/// A packet sent to indicate a status update.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct UpdateStatus {
-    /// Milliseconds since the client went idle.
-    since: Option<i32>,
-    /// The activity object to set.
-    game: Option<Activity>,
-    /// The status object to set.
-    status: String,
-    /// Whether or not the client is AFK.
-    afk: bool
 }
 
 /// The packet received when a client completes a handshake with the Discord gateway.
