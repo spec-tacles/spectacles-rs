@@ -225,10 +225,15 @@ impl Default for ActivityType {
 /// A list of possible statuses.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Status {
+    #[serde(rename = "online")]
     Online,
+    #[serde(rename = "dnd")]
     DnD,
+    #[serde(rename = "idle")]
     Idle,
+    #[serde(rename = "invisible")]
     Invisible,
+    #[serde(renaem = "offline")]
     Offline
 }
 
