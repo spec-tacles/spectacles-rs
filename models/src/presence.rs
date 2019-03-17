@@ -140,9 +140,11 @@ pub struct ClientStatus {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ActivityTimestamps {
     /// When the activity started, in milliseconds.
-    pub start: i32,
+    #[serde(default)]
+    pub start: Option<i32>,
     /// When the activity ends, in milliseconds.
-    pub end: i32
+    #[serde(default)]
+    pub end: Option<i32>
 }
 
 /// Information about the player's current party.
