@@ -20,7 +20,7 @@ pub struct Channel {
     pub position: Option<i32>,
     /// The explicit permission overwrites for members and roles.
     #[serde(default)]
-    pub permission_overwrites: Option<PermissionOverwrites>,
+    pub permission_overwrites: Option<Vec<PermissionOverwrites>>,
     /// The name of the channel.
     #[serde(default)]
     pub name: Option<String>,

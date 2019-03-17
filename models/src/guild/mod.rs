@@ -1,5 +1,6 @@
 //! Structures related to Discord guilds.
 use serde_repr::{Deserialize_repr, Serialize_repr};
+
 use crate::{
     channel::Channel,
     message::Emoji,
@@ -29,7 +30,7 @@ pub struct Guild {
     /// The guild's splash hash. Will be a None value if it does not exist.
     pub splash: Option<String>,
     /// Whether or not the user is an owner of the guild.
-    pub owner: bool,
+    pub owner: Option<bool>,
     /// The ID of the guild owner.
     pub owner_id: String,
     /// The permissions that the user has in this guild.
@@ -40,7 +41,7 @@ pub struct Guild {
     /// The AFK channel ID for this guild.
     pub afk_channel_id: Option<String>,
     /// The AFK channel timeout for this guild.
-    pub afk_timeout: Option<String>,
+    pub afk_timeout: Option<i32>,
     /// Whether or not the guild can be embedded in a widget.
     #[serde(default)]
     pub embed_enabled: bool,
@@ -197,7 +198,8 @@ pub struct GuildRoleDelete {
 }
 
 /// A guild's explicit content filter levels.
-#[derive(Deserialize, Debug, Serialize, Clone)]
+#[derive(Deserialize_repr, Debug, Serialize_repr, Clone)]
+#[repr(u8)]
 pub enum ExplicitContentFilter {
     /// The filter is not active.
     Disabled,
@@ -207,13 +209,9 @@ pub enum ExplicitContentFilter {
     AllMembers
 }
 
-impl Default for ExplicitContentFilter {
-    fn default() -> Self {
-        ExplicitContentFilter::Disabled
-    }
-}
 /// A guild's MFA levels.
-#[derive(Deserialize, Debug, Serialize, Clone)]
+#[derive(Deserialize_repr, Debug, Serialize_repr, Clone)]
+#[repr(u8)]
 pub enum MfaLevel {
     /// The guild does not require MFA for elevated actions.
     None,
@@ -221,13 +219,9 @@ pub enum MfaLevel {
     Elevated,
 }
 
-impl Default for MfaLevel {
-    fn default() -> Self {
-        MfaLevel::None
-    }
-}
 /// A guild's default message notification setting.
-#[derive(Deserialize, Debug, Serialize, Clone)]
+#[derive(Deserialize_repr, Debug, Serialize_repr, Clone)]
+#[repr(u8)]
 pub enum DefaultMessageNotifications {
     /// A user will be notified whenever a new message is sent in the guild.
     AllMessages,
@@ -235,11 +229,6 @@ pub enum DefaultMessageNotifications {
     OnlyMentions
 }
 
-impl Default for DefaultMessageNotifications {
-    fn default() -> Self {
-        DefaultMessageNotifications::AllMessages
-    }
-}
 /// A guild's verification levels.
 #[derive(Deserialize_repr, Debug, Clone, Serialize_repr)]
 #[repr(u8)]

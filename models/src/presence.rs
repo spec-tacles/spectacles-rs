@@ -22,7 +22,7 @@ pub struct Activity {
     #[serde(default)]
     pub timestamps: Option<ActivityTimestamps>,
     /// The application ID for the game, if any.
-    pub application_id: Snowflake,
+    pub application_id: Option<Snowflake>,
     /// What the player is currently doing.
     pub details: Option<String>,
     /// The user's current party status.
@@ -141,10 +141,10 @@ pub struct ClientStatus {
 pub struct ActivityTimestamps {
     /// When the activity started, in milliseconds.
     #[serde(default)]
-    pub start: Option<i32>,
+    pub start: Option<u64>,
     /// When the activity ends, in milliseconds.
     #[serde(default)]
-    pub end: Option<i32>
+    pub end: Option<u64>
 }
 
 /// Information about the player's current party.
