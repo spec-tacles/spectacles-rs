@@ -20,7 +20,7 @@ pub struct Activity {
     pub url: String,
     /// Timestamps for this activity.
     #[serde(default)]
-    pub timestamps: ActivityTimestamps,
+    pub timestamps: Option<ActivityTimestamps>,
     /// The application ID for the game, if any.
     pub application_id: Snowflake,
     /// What the player is currently doing.
@@ -29,39 +29,19 @@ pub struct Activity {
     pub state: Option<String>,
     /// The player's current party.
     #[serde(default)]
-    pub party: ActivityParty,
+    pub party: Option<ActivityParty>,
     /// The Rich Presence assets.
     #[serde(default)]
-    pub assets: ActivityAssets,
+    pub assets: Option<ActivityAssets>,
     /// The Rich Presence secrets.
     #[serde(default)]
-    pub secrets: ActivitySecrets,
+    pub secrets: Option<ActivitySecrets>,
     /// Whether or not the activity is in a current game session.
     #[serde(default)]
-    pub instance: bool,
+    pub instance: Option<bool>,
     /// Activity flags.
     #[serde(default)]
-    pub flags: i32
-}
-
-impl Activity {
-    /// Creates a new activity that is ready to be sent to the Discord Gateway.
-    pub fn new(kind: ActivityType, name: &str, url: &str) -> Self {
-        Activity {
-            name: name.to_string(),
-            kind,
-            url: url.to_string(),
-            timestamps: ActivityTimestamps::default(),
-            application_id: Snowflake::default(),
-            details: None,
-            state: None,
-            party: ActivityParty::default(),
-            assets: ActivityAssets::default(),
-            secrets: ActivitySecrets::default(),
-            instance: false,
-            flags: i32::default()
-        }
-    }
+    pub flags: Option<i32>
 }
 
 /// Represents the activity of the current client.
@@ -105,6 +85,30 @@ impl ClientActivity {
     }
 }
 
+/// A partial presence object sent by Discord.
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PartialPresence {
+    /// The roles that this user has.
+    #[serde(default)]
+    pub roles: Vec<Snowflake>,
+    /// The user's current activity, if any.
+    #[serde(default)]
+    pub game: Option<Activity>,
+    /// The ID of the guild.
+    #[serde(default)]
+    pub guild_id: Option<Snowflake>,
+    /// The status of this user.
+    #[serde(default)]
+    pub status: Option<Status>,
+    #[serde(default)]
+    /// The user's current activities.
+    pub activities: Option<Vec<Activity>>,
+    /// The user's client status.
+    #[serde(default)]
+    pub client_status: Option<ClientStatus>
+
+}
+
 /// The current presence of the connected Client.
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ClientPresence {
@@ -116,6 +120,20 @@ pub struct ClientPresence {
     pub status: String,
     /// Whether or not the client is AFK.
     pub afk: bool
+}
+
+/// Represents the platform dependent status of a user.
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct ClientStatus {
+    /// The user's status on a desktop.
+    #[serde(default)]
+    pub desktop: Option<String>,
+    /// The user's status on mobile.
+    #[serde(default)]
+    pub mobile: Option<String>,
+    /// The user's status in the web browser client.
+    #[serde(default)]
+    pub web: Option<String>
 }
 
 /// Represents an Activity's timestamps.

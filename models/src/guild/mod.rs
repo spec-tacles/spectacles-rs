@@ -3,7 +3,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use crate::{
     channel::Channel,
     message::Emoji,
-    presence::Presence,
+    presence::PartialPresence,
     User,
     voice::VoiceState,
 };
@@ -93,7 +93,7 @@ pub struct Guild {
     pub members: Vec<GuildMember>,
     /// A collection of presences in this guild.
     #[serde(default)]
-    pub presences: Vec<Presence>
+    pub presences: Option<Vec<PartialPresence>>
 }
 
 /// A Partial guild object, usually an offline guild.
