@@ -1,4 +1,5 @@
 //! Structures related to Discord guilds.
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use crate::{
     channel::Channel,
     message::Emoji,
@@ -17,7 +18,7 @@ mod audit_log;
 mod member;
 
 /// A Discord Guild, commonly referred to as a "server".
-#[derive(Deserialize, Debug, Serialize, Clone, Default)]
+#[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct Guild {
     /// The snowflake ID of this guild.
     pub id: String,
@@ -240,7 +241,8 @@ impl Default for DefaultMessageNotifications {
     }
 }
 /// A guild's verification levels.
-#[derive(Deserialize, Debug, Serialize, Clone)]
+#[derive(Deserialize_repr, Debug, Clone, Serialize_repr)]
+#[repr(u8)]
 pub enum VerificationLevel {
     /// The guild is unrestricted.
     None,
@@ -252,10 +254,4 @@ pub enum VerificationLevel {
     High,
     /// The guild requires that the user have a verified phone number on their account.
     Insane
-}
-
-impl Default for VerificationLevel {
-    fn default() -> Self {
-        VerificationLevel::None
-    }
 }
