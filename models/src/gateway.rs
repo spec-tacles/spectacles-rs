@@ -159,7 +159,7 @@ pub struct UpdateStatus {
 
 impl SendablePacket for UpdateStatus {
     fn to_json(self) -> Result<String, JsonError> {
-        serde_json::to_string(&UpdateStatus {
+        serde_json::to_string(&SendPacket {
             op: Opcodes::StatusUpdate,
             d: self
         })
