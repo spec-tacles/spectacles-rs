@@ -233,7 +233,7 @@ pub enum Status {
     Idle,
     #[serde(rename = "invisible")]
     Invisible,
-    #[serde(renaem = "offline")]
+    #[serde(rename = "offline")]
     Offline
 }
 
