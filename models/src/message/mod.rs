@@ -1,6 +1,6 @@
 //! Structs related to Discord messages in a guild channel.
 use serde_repr::{Deserialize_repr, Serialize_repr};
-
+use chrono::{DateTime, FixedOffset};
 use crate::guild::GuildMember;
 use crate::snowflake::Snowflake;
 use crate::User;
@@ -31,9 +31,9 @@ pub struct Message {
     #[serde(default)]
     pub member: GuildMember,
     /// The time that this message was sent.
-    pub timestamp: String,
+    pub timestamp: DateTime<FixedOffset>,
     /// When this message was edited, if applicable.
-    pub edited_timestamp: Option<String>,
+    pub edited_timestamp: Option<DateTime<FixedOffset>>,
     /// Whether or not this was a TTS message.
     pub tts: bool,
     /// Whether or not this message mentioned everyone.
