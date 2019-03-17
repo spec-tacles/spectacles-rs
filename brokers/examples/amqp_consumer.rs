@@ -17,9 +17,9 @@ fn main() {
     let result = connect.map(|broker| {
         // Now, we will subscribe and listen for the event we publish in the consumer.
         // We provide a callback function to the subscribe() method, which will be called when a message is received.
-        broker.subscribe("HELLO", |payload| {
+        broker.subscribe("HELLO".to_string(), |payload| {
             println!("Received Message: {}", payload);
-        });
+        })
     }).map_err(|err| {
         eprintln!("An error was encountered during subscribe: {}", err);
     });

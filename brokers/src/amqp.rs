@@ -89,7 +89,7 @@ impl AmqpBroker {
     /// ```rust,norun
     /// AmqpBroker::new(&addr, "mygroup", None)
     ///    .and_then(|broker| {
-    ///         broker.publish("MESSAGE_CREATE", "{"content": "Hi"}".as_bytes().to_vec());
+    ///         broker.publish("MESSAGE_CREATE", "{"content": "Hi"}".as_bytes().to_vec())
     ///     })
     /// ```
     ///
@@ -108,14 +108,17 @@ impl AmqpBroker {
     /// # Example
     /// ```rust,norun
     /// AmqpBroker::new(&addr, "mygroup", None)
-    ///    .map(|broker| {
+    ///    .and_then(|broker| {
     ///         broker.subscribe("MESSAGE_CREATE", |payload| {
     ///             println!("Message Event Received: {}", payload);
-    ///         });
+    ///         })
+    ///     })
+    ///     .map(|_| {
+    ///         println!("Successfully subscribed to the group!");
     ///     })
     /// ```
     ///
-    pub fn subscribe<C>(self, evt: &'static str, callback: C) -> Self
+    pub fn subscribe<C>(self, evt: String, callback: C) -> impl Future<Item=(), Error=Error>
         where C: Fn(&str) + Send + Sync + 'static
     {
         let queue_name = match &self.subgroup {
@@ -123,7 +126,7 @@ impl AmqpBroker {
             None => format!("{}:{}", self.group, evt)
         };
         let channel = Arc::clone(&self.channel);
-        let future = channel.queue_declare(
+        channel.queue_declare(
             queue_name.as_str(),
             QueueDeclareOptions {
                 durable: true,
@@ -138,7 +141,7 @@ impl AmqpBroker {
                 channel.queue_bind(
                     queue_name.as_str(),
                     group.as_ref(),
-                    evt,
+                    evt.as_str(),
                     QueueBindOptions::default(),
                     FieldTable::new()
                 ).and_then(move  |_| channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new()))
@@ -151,11 +154,6 @@ impl AmqpBroker {
                 let _ = callback(decoded);
                 channel.basic_ack(message.delivery_tag, false)
             })
-        }).map_err(Error::from);
-        tokio::spawn(future.map_err(move |err| {
-            error!("Error encountered on event: {} - {}", evt, err);
-        }));
-
-        self
+        }).map_err(Error::from)
     }
 }
