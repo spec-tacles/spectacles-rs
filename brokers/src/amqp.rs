@@ -116,7 +116,7 @@ impl AmqpBroker {
     /// ```
     ///
     pub fn subscribe<C>(self, evt: &'static str, callback: C) -> Self
-        where C: Fn(String) + Send + Sync + 'static
+        where C: Fn(&str) + Send + Sync + 'static
     {
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
@@ -147,7 +147,7 @@ impl AmqpBroker {
             let channel = Arc::clone(&self.channel);
             move |stream| stream.for_each(move |message| {
                 debug!("Incoming message received from AMQP with a delivery tag of {}.", &message.delivery_tag);
-                let decoded = String::from_utf8(message.data.to_owned()).unwrap();
+                let decoded = std::str::from_utf8(&message.data).unwrap();
                 let _ = callback(decoded);
                 channel.basic_ack(message.delivery_tag, false)
             })
