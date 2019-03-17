@@ -8,8 +8,8 @@ pub struct Role {
     /// The hexadecimal color code for this role.
     pub color: i32,
     /// whether or not this role is hoisted.
-    #[serde(rename = "hoisted")]
-    pub hoist: bool,
+    #[serde(rename = "hoist")]
+    pub hoisted: bool,
     /// The position of this role.
     pub position: i32,
     /// Whether or not this role is managed by an integration.
