@@ -1,6 +1,7 @@
 //! Structs related to Discord messages in a guild channel.
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use chrono::{DateTime, FixedOffset};
+use serde_repr::{Deserialize_repr, Serialize_repr};
+
 use crate::guild::GuildMember;
 use crate::snowflake::Snowflake;
 use crate::User;
@@ -12,6 +13,42 @@ pub use self::webhook::Webhook;
 mod embed;
 mod webhook;
 mod emoji;
+
+/// Represents different types that can be sent to the Discord API.
+pub trait MessageResponse {
+    fn to_message(self) -> CreateMessage;
+}
+
+impl MessageResponse for &str {
+    fn to_message(self) -> CreateMessage {
+        CreateMessage::default().with_content(self)
+    }
+}
+
+impl MessageResponse for String {
+    fn to_message(self) -> CreateMessage {
+        CreateMessage::default().with_content(self)
+    }
+}
+
+impl MessageResponse for Embed {
+    fn to_message(self) -> CreateMessage {
+        CreateMessage::default().with_embed(self)
+    }
+}
+
+impl MessageResponse for EditMessage {
+    fn to_message(self) -> CreateMessage {
+        let m = CreateMessage::default();
+        let m = m.clone().with_content(self.content.unwrap_or_default());
+
+        if let Some(e) = self.embed {
+            m.with_embed(e)
+        } else {
+            m
+        }
+    }
+}
 
 /// A message sent in a channel on Discord.
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -91,7 +128,7 @@ impl CreateMessage {
     }
 
     /// Adds content to the message.
-    pub fn with_content(mut self, content: &str) -> Self {
+    pub fn with_content(mut self, content: impl ToString) -> Self {
         self.content = Some(content.to_string());
 
         self
@@ -130,8 +167,8 @@ impl EditMessage {
     }
 
     /// Adds the content to edit into this message.
-    pub fn with_content(mut self, content: &str) -> Self {
-        self.content = Some(content.to_string());
+    pub fn with_content(mut self, content: impl Into<String>) -> Self {
+        self.content = Some(content.into());
 
         self
     }

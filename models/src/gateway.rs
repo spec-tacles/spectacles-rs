@@ -176,6 +176,15 @@ impl SendablePacket for IdentifyPacket {
     }
 }
 
+
+impl SendablePacket for UpdateVoiceState {
+    fn to_json(self) -> Result<String, JsonError> {
+        serde_json::to_string(&SendPacket {
+            op: Opcodes::VoiceStatusUpdate,
+            d: self,
+        })
+    }
+}
 impl SendablePacket for RequestGuildMembers {
     fn to_json(self) -> Result<String, JsonError> {
         serde_json::to_string(&SendPacket {
