@@ -7,7 +7,7 @@ use tokio::runtime::current_thread;
 
 use spectacles_brokers::AmqpBroker;
 use spectacles_gateway::{EventHandler, ManagerOptions, Shard, ShardManager, ShardStrategy};
-use spectacles_model::gateway::ReceivePacket;
+use spectacles_model::gateway::{ReceivePacket, RequestGuildMembers, UpdateStatus, UpdateVoiceState};
 
 use crate::errors::Error as MyError;
 
@@ -24,23 +24,54 @@ pub struct Handler {
 }
 
 impl EventHandler for Handler {
+    fn on_shard_ready(&self, shard: &mut Shard) {
+        let broker = self.broker.clone();
+        let shard_num = shard.info[0].clone().to_string();
+
+        tokio::spawn(broker.subscribe(shard_num, {
+            let shard = shard.clone();
+            move |payload| {
+                if let Ok(packet) = serde_json::from_str::<UpdateStatus>(payload) {
+                    let _ = shard.send_payload(packet).map_err(|err| {
+                        error!("Failed to send packet to the gateway. {:?}", err);
+                    });
+                };
+                if let Ok(packet) = serde_json::from_str::<RequestGuildMembers>(payload) {
+                    let _ = shard.send_payload(packet).map_err(|err| {
+                        error!("Failed to send packet to the gateway. {:?}", err);
+                    });
+                };
+                if let Ok(packet) = serde_json::from_str::<UpdateVoiceState>(payload) {
+                    let _ = shard.send_payload(packet).map_err(|err| {
+                        error!("Failed to send packet to the gateway. {:?}", err);
+                    });
+                };
+            }
+        }).map_err(|err| {
+            error!("Failed to subscribe to the shard stream. {}", err);
+        }));
+    }
+
     fn on_packet(&self, shard: &mut Shard, packet: ReceivePacket) {
         let info = shard.info.clone();
-        if packet.t.is_none() { unimplemented!(); }
-        else {
-            let event = packet.t.unwrap().to_string();
-            let broker = &self.broker;
-            let payload = packet.d.get().as_bytes().to_vec();
-            current_thread::spawn({
-                broker.publish(event.as_ref(), payload)
-                    .map(move |_| {
-                        info!("Sent event: {} by Shard {} to AMQP.", event, info[0]);
-                    })
-                    .map_err(|err| {
-                        error!("Failed to publish event to the AMQP broker. {}", err);
-                    })
-            });
-        }
+        match packet.t {
+            Some(event) => {
+                let evt = event.to_string();
+                let broker = &self.broker;
+                let payload = packet.d.get().as_bytes().to_vec();
+                current_thread::spawn({
+                    broker.publish(evt.as_ref(), payload)
+                        .map(move |_| {
+                            info!("Sent event: {} by Shard {} to AMQP.", event, info[0]);
+                        })
+                        .map_err(|err| {
+                            error!("Failed to publish event to the AMQP broker. {}", err);
+                        })
+                });
+            },
+            None => {}
+        };
+
     }
 }
 
@@ -62,7 +93,7 @@ pub fn start_sharder(config: SpawnerConfig) -> impl Future<Item = (), Error = My
             }).map_err(MyError::from)
         });
     sharder.map(|manager| manager.begin_spawn())
-        .map_err(MyError::from)
+        .from_err()
 }
 
 pub fn parse_args(results: &ArgMatches) -> Result<(), MyError> {
