@@ -1,7 +1,7 @@
 use futures::future::Future;
 
 use spectacles_model::channel::{Channel, ModifyChannel};
-use spectacles_model::message::{CreateMessage, Message, EditMessage};
+use spectacles_model::message::{CreateMessage, Message, MessageResponse};
 
 use crate::Error;
 use crate::routes::RouteManager;
@@ -21,15 +21,15 @@ impl ChannelsView {
     }
 
     /// Creates a message in the current channel.
-    pub fn create_message(&self, payload: CreateMessage) -> impl Future<Item=Message, Error=Error> {
+    pub fn create_message(&self, payload: impl MessageResponse) -> impl Future<Item=Message, Error=Error> {
         let route = format!("/channels/{}/messages", self.id);
-        self.router.post::<CreateMessage, Message>(route, payload)
+        self.router.post::<CreateMessage, Message>(route, payload.to_message())
     }
 
     /// Edits the message in this channel, with the given message ID.
-    pub fn edit_message(&self, mid: u64, payload: EditMessage) -> impl Future<Item = Message, Error = Error> {
-        let route = format!("/channels/{}/messages/{}", self.id, mid);
-        self.router.patch::<EditMessage, Message>(route, payload)
+    pub fn edit_message(&self, mid: impl Into<u64>, payload: impl MessageResponse) -> impl Future<Item=Message, Error=Error> {
+        let route = format!("/channels/{}/messages/{}", self.id, mid.into());
+        self.router.patch::<CreateMessage, Message>(route, payload.to_message())
     }
 
     /// Modifies this channel.
@@ -45,8 +45,8 @@ impl ChannelsView {
     }
 
     /// Gets a message in this channel, with the provided ID.
-    pub fn get_message(&self, mid: u64) -> impl Future<Item=Message, Error=Error> {
-        let route = format!("/channels/{}/messages/{}", self.id, mid);
+    pub fn get_message(&self, mid: impl Into<u64>) -> impl Future<Item=Message, Error=Error> {
+        let route = format!("/channels/{}/messages/{}", self.id, mid.into());
         self.router.get::<Message>(route)
     }
 

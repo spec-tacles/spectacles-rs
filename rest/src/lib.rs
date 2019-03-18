@@ -2,11 +2,13 @@ use http::header::HeaderValue;
 use reqwest::header::HeaderMap;
 use reqwest::r#async::ClientBuilder;
 
+pub use bucket::*;
 use routes::*;
 
 pub use crate::errors::{Error, Result};
 
 mod errors;
+mod bucket;
 mod routes;
 mod constants;
 
@@ -53,7 +55,7 @@ impl RestClient {
         self
     }
 
-    pub fn channel(&self, id: u64) -> ChannelsView {
-        ChannelsView { id, router: self.router.clone() }
+    pub fn channel(&self, id: impl Into<u64>) -> ChannelsView {
+        ChannelsView { id: id.into(), router: self.router.clone() }
     }
 }

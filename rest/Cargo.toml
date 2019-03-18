@@ -16,4 +16,5 @@ serde_json = "1.0.38"
 futures = "0.1.25"
 tokio = "0.1.16"
 http = "0.1.16"
+parking_lot = "0.7.1"
 spectacles-model = { path = "../models", version = "0.1.3" }
