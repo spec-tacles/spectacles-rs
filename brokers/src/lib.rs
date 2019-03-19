@@ -34,11 +34,11 @@
 //! More examples can be found in the examples directory on Github.
 #[macro_use] extern crate log;
 
-pub use amqp::AmqpBroker;
 pub use errors::Error;
 
 mod errors;
-mod amqp;
+/// Utilities for interfacing with an AMQP-based message broker.
+pub mod amqp;
 
 /// Event handler for receiving messages from a message brokers.
 pub trait MessageHandler {

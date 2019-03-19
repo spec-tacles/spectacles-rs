@@ -5,7 +5,7 @@ use std::{
 };
 
 use failure::Fail;
-use lapin_futures::error::Error as LapinError;
+use lapin_futures_native_tls::lapin::error::Error as LapinError;
 
 /// Details the various errors of the crate.
 #[derive(Debug)]

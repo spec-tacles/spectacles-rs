@@ -12,17 +12,19 @@ Message brokers which allow for simple communication between Spectacles services
 use std::env::var;
 use std::net::SocketAddr;
 use futures::future::Future;
-use spectacles_brokers::AmqpBroker;
+use spectacles_brokers::amqp::*;
 
 
 fn main() {
     let addr = var("AMQP_ADDR").expect("No AMQP server address found.");
-    let addr: SocketAddr = addr.parse();
-
     let connect = AmqpBroker::new(&addr, "test".to_string(), None);
     let result = connect.and_then(|broker| {
         let json = r#"{"message": "Example Publish."}"#.as_bytes();
-        broker.publish("HELLO", json.to_vec())
+        broker.publish(
+            "HELLO", 
+            json.to_vec(), 
+            AmqpProperties::default().with_content_type("application/json".to_string()
+        )
     });
     let success = result.map(|_| {
         println!("Message publish succeeded, check the other window!");

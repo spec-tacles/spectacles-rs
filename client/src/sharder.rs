@@ -1,18 +1,17 @@
 use std::env;
-use std::net::SocketAddr;
 
 use clap::ArgMatches;
 use futures::future::Future;
 use tokio::runtime::current_thread;
 
-use spectacles_brokers::AmqpBroker;
+use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
 use spectacles_gateway::{EventHandler, ManagerOptions, Shard, ShardManager, ShardStrategy};
 use spectacles_model::gateway::{ReceivePacket, RequestGuildMembers, UpdateStatus, UpdateVoiceState};
 
 use crate::errors::Error as MyError;
 
 pub struct SpawnerConfig {
-    amqp_url: SocketAddr,
+    amqp_url: String,
     amqp_subgroup: Option<String>,
     amqp_group: String,
     shard_count: Option<usize>,
@@ -60,13 +59,15 @@ impl EventHandler for Handler {
                 let broker = &self.broker;
                 let payload = packet.d.get().as_bytes().to_vec();
                 current_thread::spawn({
-                    broker.publish(evt.as_ref(), payload)
-                        .map(move |_| {
-                            info!("Sent event: {} by Shard {} to AMQP.", event, info[0]);
-                        })
-                        .map_err(|err| {
-                            error!("Failed to publish event to the AMQP broker. {}", err);
-                        })
+                    broker.publish(
+                        evt.as_ref(),
+                        payload,
+                        AmqpProperties::default().with_content_type("application/json".to_string()),
+                    ).map(move |_| {
+                        info!("Sent event: {} by Shard {} to AMQP.", event, info[0]);
+                    }).map_err(|err| {
+                        error!("Failed to publish event to the AMQP broker. {}", err);
+                    })
                 });
             },
             None => {}
@@ -144,8 +145,6 @@ pub fn parse_args(results: &ArgMatches) -> Result<(), MyError> {
     } else {
         env::var("DISCORD_TOKEN").expect("No Discord token provided in arguments or ENV.")
     };
-
-    let amqp_url: SocketAddr = amqp_url.parse().expect("Malformed AMQP URL provided, please check the URL and try again.");
 
     current_thread::run(start_sharder(SpawnerConfig {
         amqp_group,

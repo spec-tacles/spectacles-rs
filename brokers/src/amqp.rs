@@ -1,31 +1,31 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use futures::{future::Future, Stream};
 use futures_backoff::Strategy;
-use lapin_futures::{
+use lapin_futures_native_tls::{AMQPConnectionNativeTlsExt, AMQPStream};
+use lapin_futures_native_tls::lapin::{
     channel::{
         BasicConsumeOptions,
-        BasicProperties,
         BasicPublishOptions,
         Channel,
         ExchangeDeclareOptions,
         QueueBindOptions,
         QueueDeclareOptions
     },
-    client::{Client as AmqpClient, ConnectionOptions},
     types::FieldTable,
 };
-use tokio::net::TcpStream;
+use lapin_futures_native_tls::lapin::channel::BasicProperties;
 
 use crate::errors::Error;
+
+pub type AmqpProperties = BasicProperties;
 
 /// Central AMQP message brokers client.
 #[derive(Clone)]
 pub struct AmqpBroker {
     /// The AMQP channel used for processing messages.
-    pub channel: Arc<Channel<TcpStream>>,
+    pub channel: Arc<Channel<AMQPStream>>,
     /// The group used for consuming and producing messages.
     pub group: String,
     /// The subgroup used for consuming and producing messages.
@@ -42,10 +42,9 @@ impl AmqpBroker {
     /// use futures::future::future;
     ///
     /// fn main() {
-    ///     let addr = var("AMQP_ADDR").expect("No AMQP Address has been provided.");
-    ///     let addr: SocketAddr = addr.parse().expect("Malformed URL provided.");
+    ///     let amqp = var("AMQP_URL").expect("No AMQP Address has been provided.");
     ///     tokio::run({
-    ///         AmqpBroker::new(&addr, "mygroup".to_string(), None)
+    ///         AmqpBroker::new(&amqp, "mygroup".to_string(), None)
     ///         .map(|broker| {
     ///             /// Publish and subscribe to events here.
     ///         });
@@ -53,17 +52,15 @@ impl AmqpBroker {
     /// }
     /// ```
 
-    pub fn new<'a>(addr: &SocketAddr, group: String, subgroup: Option<String>) -> impl Future<Item = AmqpBroker, Error = Error> + 'a {
+    pub fn new<'a>(amqp_uri: &str, group: String, subgroup: Option<String>) -> impl Future<Item=AmqpBroker, Error=Error> + 'a {
         let retry_strategy = Strategy::fibonacci(Duration::from_secs(2))
             .with_max_retries(10);
-        let (amqp, heartbeat) = retry_strategy.retry(|| {
-            TcpStream::connect(addr).map_err(Error::from).and_then(|stream| {
-                AmqpClient::connect(stream, ConnectionOptions::default())
-                    .map_err(Error::from)
+        let (amqp, _) = retry_strategy.retry(|| {
+            amqp_uri.connect_cancellable(|err| {
+                error!("Error encountered while attempting heartbeat. {}", err);
             })
         }).wait().unwrap();
         amqp.create_channel().map_err(Error::from).and_then(move |channel| {
-            tokio::spawn(heartbeat.map_err(|_| ()));
             debug!("Created AMQP Channel With ID: {}", &channel.id);
             channel.exchange_declare(group.as_ref(), "direct", ExchangeDeclareOptions {
                 durable: true,
@@ -85,22 +82,29 @@ impl AmqpBroker {
 
     /// Publishes a payload for the provided event to the message brokers.
     /// You must serialize all payloads to a Vector of bytes.
+    /// This method accepts an AMQPProperties struct which will set the AMQP properties for this message.
+    /// See [here](https://docs.rs/amq-protocol/1.2.0/amq_protocol/protocol/basic/struct.AMQPProperties.html) for more details on the various AMQP properties.
+    ///
     /// # Example
     /// ```rust,norun
-    /// AmqpBroker::new(&addr, "mygroup", None)
+    /// AmqpBroker::new(AMQP_URI, "mygroup".to_string(), None)
     ///    .and_then(|broker| {
-    ///         broker.publish("MESSAGE_CREATE", "{"content": "Hi"}".as_bytes().to_vec())
+    ///         broker.publish(
+    ///             "MESSAGE_CREATE",
+    ///             "{"content": "Hi"}".as_bytes().to_vec(),
+    ///             AmqpProperties::default().with_content_type("application/json")
+    ///         )
     ///     })
     /// ```
     ///
-    pub fn publish(&self, evt: &str, payload: Vec<u8>) -> impl Future<Item = Option<u64>, Error = Error> {
+    pub fn publish(&self, evt: &str, payload: Vec<u8>, properties: AmqpProperties) -> impl Future<Item=Option<u64>, Error=Error> {
         debug!("Publishing event: {} to the AMQP server.", evt);
         self.channel.basic_publish(
             self.group.as_ref(),
             evt,
             payload,
             BasicPublishOptions::default(),
-            BasicProperties::default().with_content_type("application/json".to_string())
+            properties
         ).map_err(Error::from)
     }
 
