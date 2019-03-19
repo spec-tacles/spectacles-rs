@@ -57,13 +57,14 @@ impl AmqpBroker {
         let gr = group.clone();
         amqp_uri.connect_cancellable(|err| {
             eprintln!("Error encountered while attempting heartbeat. {}", err);
-        }).from_err().and_then(|(amqp, _)| amqp.create_channel()
+        }).map_err(Error::from)
+            .and_then(|(amqp, _)| amqp.create_channel().from_err())
             .and_then(move |channel| {
             debug!("Created AMQP Channel With ID: {}", &channel.id);
                 channel.exchange_declare(&gr, "direct", ExchangeDeclareOptions {
                 durable: true,
                 ..Default::default()
-                }, FieldTable::new()).map(|_| channel)
+                }, FieldTable::new()).map(|_| channel).from_err()
             }).map(|channel| {
             Self {
                 channel,
