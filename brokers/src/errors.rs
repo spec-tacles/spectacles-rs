@@ -4,13 +4,17 @@ use std::{
     io::Error as IoError,
 };
 
-use failure::Fail;
-use lapin_futures_native_tls::lapin::error::Error as LapinError;
+use failure::{Compat, Fail};
+use lapin_futures_native_tls::{
+    error::Error as LapinTlsError,
+    lapin::error::Error as LapinError,
+};
 
 /// Details the various errors of the crate.
 #[derive(Debug)]
 pub enum Error {
-    Lapin(LapinError),
+    Lapin(Compat<LapinError>),
+    LapinTls(Compat<LapinTlsError>),
     Io(IoError)
 }
 
@@ -23,7 +27,8 @@ impl Display for Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match self {
-            Error::Lapin(e) => e.name().unwrap(),
+            Error::Lapin(e) => e.description(),
+            Error::LapinTls(e) => e.description(),
             Error::Io(e) => e.description()
         }
     }
@@ -31,9 +36,16 @@ impl StdError for Error {
 
 impl From<LapinError> for Error {
     fn from(err: LapinError) -> Self {
-        Error::Lapin(err)
+        Error::Lapin(err.compat())
     }
 }
+
+impl From<LapinTlsError> for Error {
+    fn from(err: LapinTlsError) -> Self {
+        Error::LapinTls(err.compat())
+    }
+}
+
 
 impl From<IoError> for Error {
     fn from(err: IoError) -> Self {

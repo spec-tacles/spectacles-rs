@@ -10,7 +10,6 @@ Message brokers which allow for simple communication between Spectacles services
 ## Example AMQP Publisher
 ```rust,norun
 use std::env::var;
-use std::net::SocketAddr;
 use futures::future::Future;
 use spectacles_brokers::amqp::*;
 

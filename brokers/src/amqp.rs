@@ -25,7 +25,7 @@ pub type AmqpProperties = BasicProperties;
 #[derive(Clone)]
 pub struct AmqpBroker {
     /// The AMQP channel used for processing messages.
-    pub channel: Arc<Channel<AMQPStream>>,
+    pub channel: Channel<AMQPStream>,
     /// The group used for consuming and producing messages.
     pub group: String,
     /// The subgroup used for consuming and producing messages.
@@ -37,8 +37,7 @@ impl AmqpBroker {
     /// # Example
     /// ```rust,norun
     /// use std::env::var;
-    /// use spectacles_brokers::AmqpBroker;
-    /// use std::net::SocketAddr;
+    /// use spectacles_brokers::amqp::*;
     /// use futures::future::future;
     ///
     /// fn main() {
@@ -53,26 +52,25 @@ impl AmqpBroker {
     /// ```
 
     pub fn new<'a>(amqp_uri: &str, group: String, subgroup: Option<String>) -> impl Future<Item=AmqpBroker, Error=Error> + 'a {
-        let retry_strategy = Strategy::fibonacci(Duration::from_secs(2))
-            .with_max_retries(10);
-        let (amqp, _) = retry_strategy.retry(|| {
-            amqp_uri.connect_cancellable(|err| {
-                error!("Error encountered while attempting heartbeat. {}", err);
-            })
-        }).wait().unwrap();
-        amqp.create_channel().map_err(Error::from).and_then(move |channel| {
+        /*let retry_strategy = Strategy::fibonacci(Duration::from_secs(2))
+            .with_max_retries(10);*/
+        let gr = group.clone();
+        amqp_uri.connect_cancellable(|err| {
+            eprintln!("Error encountered while attempting heartbeat. {}", err);
+        }).from_err().and_then(|(amqp, _)| amqp.create_channel()
+            .and_then(move |channel| {
             debug!("Created AMQP Channel With ID: {}", &channel.id);
-            channel.exchange_declare(group.as_ref(), "direct", ExchangeDeclareOptions {
+                channel.exchange_declare(&gr, "direct", ExchangeDeclareOptions {
                 durable: true,
                 ..Default::default()
-            }, FieldTable::new()).map(move |_| {
-                Self {
-                    channel: Arc::new(channel),
-                    group,
-                    subgroup
-                }
-            }).map_err(Error::from)
-        })
+                }, FieldTable::new()).map(|_| channel)
+            }).map(|channel| {
+            Self {
+                channel,
+                group,
+                subgroup,
+            }
+        }).from_err()
     }
 
     /// Closes the currently open channel.
@@ -129,7 +127,8 @@ impl AmqpBroker {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
             None => format!("{}:{}", self.group, evt)
         };
-        let channel = Arc::clone(&self.channel);
+        let channel = self.channel.clone();
+        let group = self.group.clone();
         channel.queue_declare(
             queue_name.as_str(),
             QueueDeclareOptions {
@@ -137,22 +136,20 @@ impl AmqpBroker {
                 ..Default::default()
             },
             FieldTable::new()
-        ).and_then({
-            let channel = Arc::clone(&self.channel);
-            let group = self.group.clone();
-            move |queue| {
-                debug!("Channel ID: {} has declared queue: {}", channel.id, queue_name);
-                channel.queue_bind(
-                    queue_name.as_str(),
-                    group.as_ref(),
-                    evt.as_str(),
-                    QueueBindOptions::default(),
-                    FieldTable::new()
-                ).and_then(move  |_| channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new()))
-            }
-        }).and_then({
-            let channel = Arc::clone(&self.channel);
-            move |stream| stream.for_each(move |message| {
+        ).and_then(move |queue| {
+            debug!("Channel ID: {} has declared queue: {}", channel.id, queue_name);
+            channel.queue_bind(
+                queue_name.as_str(),
+                &group,
+                evt.as_str(),
+                QueueBindOptions::default(),
+                FieldTable::new(),
+            ).and_then(move |_| channel.basic_consume(
+                &queue,
+                "",
+                BasicConsumeOptions::default(),
+                FieldTable::new(),
+            ).and_then(move |stream| stream.for_each(move |message| {
                 debug!("Incoming message received from AMQP with a delivery tag of {}.", &message.delivery_tag);
                 let decoded = std::str::from_utf8(&message.data).unwrap();
                 tokio::spawn({
@@ -160,7 +157,7 @@ impl AmqpBroker {
                     futures::future::ok(())
                 });
                 channel.basic_ack(message.delivery_tag, false)
-            })
+            })))
         }).map_err(Error::from)
     }
 }
