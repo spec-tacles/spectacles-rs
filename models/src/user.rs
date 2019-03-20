@@ -21,3 +21,9 @@ pub struct User {
     #[serde(default)]
     pub email: Option<String>
 }
+
+impl ToString for User {
+    fn to_string(&self) -> String {
+        format!("<@{}>", self.id.0)
+    }
+}

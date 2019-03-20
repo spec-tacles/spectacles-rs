@@ -1,8 +1,10 @@
+use crate::snowflake::Snowflake;
+
 /// Represents a Discord Role.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Role {
     /// The snowflake ID of this role.
-    pub id: String,
+    pub id: Snowflake,
     /// The name of this role.
     pub name: String,
     /// The hexadecimal color code for this role.

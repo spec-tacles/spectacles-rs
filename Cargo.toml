@@ -1,8 +1,10 @@
 [workspace]
 members = [
     "client",
+    "cache",
     "brokers/",
     "gateway/",
     "rest/",
-    "models/"
+    "models/",
+    "ratelimiter"
 ]

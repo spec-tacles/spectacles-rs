@@ -11,7 +11,7 @@ pub struct VoiceState {
     /// The channel ID of the channel the user is connected to.
     pub channel_id: Option<Snowflake>,
     /// The user ID of the user this voice state belongs to.
-    pub user_id: String,
+    pub user_id: Snowflake,
     /// The guild member that this voice state belongs to.
     #[serde(default)]
     pub member: GuildMember,

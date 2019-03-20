@@ -62,6 +62,11 @@ pub struct Channel {
     pub last_pin_timestamp: Option<DateTime<FixedOffset>>
 }
 
+impl ToString for Channel {
+    fn to_string(&self) -> String {
+        format!("<#{}>", self.id.0)
+    }
+}
 /// Options for modifying a Discord channel.
 #[derive(Serialize, Clone, Debug, Default)]
 pub struct ModifyChannel {
