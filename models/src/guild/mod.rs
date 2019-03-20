@@ -8,6 +8,7 @@ use crate::{
     User,
     voice::VoiceState,
 };
+use crate::snowflake::Snowflake;
 
 pub use self::{
     member::GuildMember,
@@ -22,7 +23,7 @@ mod member;
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct Guild {
     /// The snowflake ID of this guild.
-    pub id: String,
+    pub id: Snowflake,
     /// The name of the guild.
     pub name: String,
     /// The guild's icon hash. Will be a None value if one is not set.
@@ -101,7 +102,7 @@ pub struct Guild {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UnavailableGuild {
     /// The guild ID of the guild.
-    pub id: String,
+    pub id: Snowflake,
     /// Whether or not the guild is available, usually set to true.
     pub unavailable: bool
 }
@@ -110,7 +111,7 @@ pub struct UnavailableGuild {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildBanAdd {
     /// The guild ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// The user who was banned.
     pub user: User
 }
@@ -119,7 +120,7 @@ pub struct GuildBanAdd {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildBanRemove {
     /// The guild ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// The user who was unbanned.
     pub user: User
 }
@@ -128,7 +129,7 @@ pub struct GuildBanRemove {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildEmojisUpdate {
     /// The guild ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// An array of Emoji objects.
     pub emojis: Vec<Emoji>,
 }
@@ -137,14 +138,14 @@ pub struct GuildEmojisUpdate {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildIntegrationsUpdate {
     /// The guild ID of the guild.
-    pub guild_id: String
+    pub guild_id: Snowflake
 }
 
 /// Represents a packet sent when a user is removed from a guild.
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildMemberRemove {
     /// The guild ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// The user who was removed.
     pub user: User
 }
@@ -153,7 +154,7 @@ pub struct GuildMemberRemove {
 #[derive(Deserialize, Clone, Debug)]
 pub struct GuildMemberUpdate {
     /// The ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     pub roles: Vec<String>,
     /// The user who was updated.
     pub user: User,
@@ -165,7 +166,7 @@ pub struct GuildMemberUpdate {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildMembersChunk {
     /// The guild ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// An array of guild member objects.
     pub members: Vec<GuildMember>
 }
@@ -174,7 +175,7 @@ pub struct GuildMembersChunk {
 #[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleCreate {
     /// The guild ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// The newly created role.
     pub role: Role
 }
