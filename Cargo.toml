@@ -5,6 +5,5 @@ members = [
     "brokers/",
     "gateway/",
     "rest/",
-    "models/",
-    "ratelimiter"
+    "models/"
 ]

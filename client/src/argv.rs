@@ -40,5 +40,8 @@ pub fn get_args() -> ArgMatches<'static> {
                 .help("The Discord token that will be used to connect to the gateway.")
                 .value_name("TOKEN")
             )
+        )
+        .subcommand(SubCommand::with_name("ratelimit")
+            .about("Starts an HTTP ratelimiter proxy, which can ratelimit your HTTP clients.")
         ).get_matches()
 }
