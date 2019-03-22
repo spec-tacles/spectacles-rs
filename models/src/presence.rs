@@ -85,9 +85,9 @@ impl ClientActivity {
     }
 }
 
-/// A partial presence object sent by Discord.
+/// Represents a user's presence in a Discord guild.
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PartialPresence {
+pub struct Presence {
     /// The user that this presence belongs to.
     pub user: PresenceUser,
     /// The roles that this user has.
@@ -198,18 +198,6 @@ pub struct ActivitySecrets {
     pub match_type: String
 }
 
-/// The current presence of a user.
-#[derive(Deserialize, Serialize, Debug, Clone, Default)]
-pub struct Presence {
-    /// Milliseconds that the client went idle.
-    pub since: Option<i32>,
-    /// The user's current activity if any.
-    pub game: Option<Activity>,
-    /// The status of the user.
-    pub status: String,
-    /// Whether or not the client is AFK.
-    pub afk: bool
-}
 
 impl SendablePacket for ClientPresence {
     fn to_json(self) -> Result<String, JsonError> {
