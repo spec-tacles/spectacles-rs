@@ -7,7 +7,7 @@ use crate::snowflake::Snowflake;
 pub struct VoiceState {
     /// The guild ID of the guild this voice state belongs to.
     #[serde(default)]
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// The channel ID of the channel the user is connected to.
     pub channel_id: Option<Snowflake>,
     /// The user ID of the user this voice state belongs to.

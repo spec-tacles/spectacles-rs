@@ -88,9 +88,11 @@ impl ClientActivity {
 /// A partial presence object sent by Discord.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PartialPresence {
+    /// The user that this presence belongs to.
+    pub user: PresenceUser,
     /// The roles that this user has.
     #[serde(default)]
-    pub roles: Vec<Snowflake>,
+    pub roles: Option<Vec<Snowflake>>,
     /// The user's current activity, if any.
     #[serde(default)]
     pub game: Option<Activity>,
@@ -107,6 +109,13 @@ pub struct PartialPresence {
     #[serde(default)]
     pub client_status: Option<ClientStatus>
 
+}
+
+/// Represents a user sent in a presence update event.
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct PresenceUser {
+    /// The ID of this user.
+    pub id: Snowflake
 }
 
 /// The current presence of the connected Client.
