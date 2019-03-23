@@ -3,6 +3,7 @@ use spectacles_model::guild::GuildMember;
 use crate::prelude::*;
 
 /// A store for caching Discord guild members.
+#[derive(Clone)]
 pub struct MemberStore<T: Backend> {
     /// The underlying backend instance.
     pub backend: T
@@ -23,6 +24,7 @@ impl<T: Backend> MemberStore<T> {
 }
 
 /// An non-blocking implementation of the Presence store, for use with async backends.
+#[derive(Clone)]
 pub struct MemberStoreAsync<T: AsyncBackend> {
     /// The underlying backend instance.
     pub backend: T

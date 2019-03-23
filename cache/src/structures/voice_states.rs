@@ -3,6 +3,7 @@ use spectacles_model::voice::VoiceState;
 use crate::prelude::*;
 
 /// A store for caching Discord voice states.
+#[derive(Clone)]
 pub struct VoiceStateStore<T: Backend> {
     /// The underlying backend instance.
     pub backend: T
@@ -23,6 +24,7 @@ impl<T: Backend> VoiceStateStore<T> {
 }
 
 /// An non-blocking implementation of the Voice States store, for use with async backends.
+#[derive(Clone)]
 pub struct VoiceStateStoreAsync<T: AsyncBackend> {
     /// The underlying backend instance.
     pub backend: T

@@ -3,17 +3,20 @@ use spectacles_model::guild::Guild;
 use crate::backends::Backend;
 use crate::prelude::*;
 
+/// A store for caching Discord guilds.
 #[derive(Clone)]
 pub struct GuildStore<T: Backend> {
     pub backend: T
 }
 
 impl<T: Backend> GuildStore<T> {
+    /// Gets a guild from the cache, by ID.
     pub fn get(&self, id: impl Into<u64>) -> Option<Guild> {
         let res = self.backend.get("GUILDS", id.into().to_string()).unwrap();
         serde_json::from_str::<Guild>(&res).ok()
     }
 
+    /// Gets all guilds in the cache.
     pub fn get_all(&self) -> Result<HashMap<u64, Guild>> {
         let results = self.backend.get_all("GUILDS")?;
         let mut new_map = HashMap::new();
@@ -24,6 +27,7 @@ impl<T: Backend> GuildStore<T> {
         Ok(new_map)
     }
 
+    /// Adds a guild to the cache.
     pub fn add(&self, mut entity: Guild) -> Result<()> {
         for member in entity.members {
             let member_str = serde_json::to_string(&member)?;
@@ -62,24 +66,29 @@ impl<T: Backend> GuildStore<T> {
     }
 
 
+    /// Removes a guild from the cache.
     pub fn remove(&self, entity: Guild) -> Result<()> {
         self.backend.remove("GUILDS", entity.id)
     }
 }
 
 
+/// A non-blocking implementation of the Guild store, for use with async backends.
 #[derive(Clone)]
 pub struct GuildStoreAsync<T: AsyncBackend> {
+    /// The underlying backend instance.
     pub backend: T
 }
 
 impl<T: AsyncBackend> GuildStoreAsync<T> {
+    /// Gets a guild from the cache, by ID.
     pub fn get(self, id: impl Into<u64>) -> impl Future<Item=Option<Guild>, Error=Error> {
         self.backend.get("GUILDS", id.into()).map(|s|
             serde_json::from_str::<Guild>(&s).ok()
         )
     }
 
+    /// Gets all guilds from the cache.
     pub fn get_all(&self) -> impl Future<Item=HashMap<u64, Guild>, Error=Error> {
         self.backend.get_all("GUILDS").map(|results| {
             let mut mapped = HashMap::new();
@@ -92,6 +101,7 @@ impl<T: AsyncBackend> GuildStoreAsync<T> {
     }
 
 
+    /// Adds a guild to the cache.
     pub fn add(&self, mut entity: Guild) -> impl Future<Item=(), Error=Error> {
         for member in entity.members {
             let member_str = serde_json::to_string(&member).unwrap();
@@ -157,6 +167,7 @@ impl<T: AsyncBackend> GuildStoreAsync<T> {
         self.backend.set("GUILDS", entity.id.clone(), json)
     }
 
+    /// Removes a guild from the cache.
     pub fn remove(&self, entity: Guild) -> impl Future<Item=(), Error=Error> {
         self.backend.remove("GUILDS", entity.id)
     }

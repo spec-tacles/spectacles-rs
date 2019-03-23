@@ -3,6 +3,7 @@ use spectacles_model::channel::Channel;
 use crate::prelude::*;
 
 /// A store for caching Discord channels.
+#[derive(Clone)]
 pub struct ChannelStore<T: Backend> {
     /// The underlying backend instance.
     pub backend: T
@@ -23,6 +24,7 @@ impl<T: Backend> ChannelStore<T> {
 }
 
 /// An non-blocking implementation of the Channel store, for use with async backends.
+#[derive(Clone)]
 pub struct ChannelStoreAsync<T: AsyncBackend> {
     /// The underlying backend instance.
     pub backend: T

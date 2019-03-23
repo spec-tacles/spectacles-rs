@@ -3,6 +3,7 @@ use spectacles_model::presence::Presence;
 use crate::prelude::*;
 
 /// A store for caching Discord presences.
+#[derive(Clone)]
 pub struct PresenceStore<T: Backend> {
     /// The underlying backend instance.
     pub backend: T
@@ -23,6 +24,7 @@ impl<T: Backend> PresenceStore<T> {
 }
 
 /// An non-blocking implementation of the Presence store, for use with async backends.
+#[derive(Clone)]
 pub struct PresenceStoreAsync<T: AsyncBackend> {
     /// The underlying backend instance.
     pub backend: T

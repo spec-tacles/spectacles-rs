@@ -3,6 +3,7 @@ use spectacles_model::guild::Role;
 use crate::prelude::*;
 
 /// A store for caching Discord roles.
+#[derive(Clone)]
 pub struct RoleStore<T: Backend> {
     /// The underlying backend instance.
     pub backend: T
@@ -23,6 +24,7 @@ impl<T: Backend> RoleStore<T> {
 }
 
 /// An non-blocking implementation of the Role store, for use with async backends.
+#[derive(Clone)]
 pub struct RoleStoreAsync<T: AsyncBackend> {
     /// The underlying backend instance.
     pub backend: T
