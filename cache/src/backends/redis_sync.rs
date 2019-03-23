@@ -13,38 +13,36 @@ pub struct RedisBackend {
 }
 
 impl Backend for RedisBackend {
-    fn get<T>(&self, coll: &str, id: String) -> Option<T>
-        where T: DeserializeOwned + Send + 'static
+    fn get(&self, coll: impl ToString, id: impl ToString) -> Result<String>
     {
-        let res = redis::cmd("HGET").arg(coll).arg(coll).arg(id).query::<String>(&*self.conn).ok();
-
-        match res {
-            Some(ref r) => serde_json::from_str::<T>(r).ok(),
-            None => None
-        }
+        redis::cmd("HGET")
+            .arg(coll.to_string())
+            .arg(id.to_string())
+            .query::<String>(&*self.conn)
+            .map_err(Error::from)
     }
 
-    fn get_all<T>(&self, coll: &str) -> Result<HashMap<String, T>>
-        where T: DeserializeOwned + Send + 'static
-    {
-        let map: HashMap<String, String> = redis::cmd("HGETALL").arg(coll).query(&*self.conn)?;
-        let mut new_map = HashMap::new();
-        for (key, val) in map {
-            new_map.insert(key, serde_json::from_str::<T>(&val)?);
-        }
+    fn get_all(&self, coll: impl ToString) -> Result<HashMap<String, String>> {
+        let map: HashMap<String, String> = redis::cmd("HGETALL").arg(coll.to_string()).query(&*self.conn)?;
 
-        Ok(new_map)
+        Ok(map)
     }
 
-    fn set<T: Serialize>(&self, coll: &str, key: String, value: T) -> Result<()> {
-        let string = serde_json::to_string(&value).unwrap();
-        let _: () = redis::cmd("HSET").arg(coll).arg(key).arg(string).query(&*self.conn)?;
+    fn set(&self, coll: impl ToString, key: impl ToString, value: impl ToString) -> Result<()> {
+        let _: () = redis::cmd("HSET")
+            .arg(coll.to_string())
+            .arg(key.to_string())
+            .arg(value.to_string())
+            .query(&*self.conn)?;
 
         Ok(())
     }
 
-    fn remove(&self, coll: &str, key: String) -> Result<()> {
-        let _: () = redis::cmd("HDEL").arg(coll).arg(key).query(&*self.conn)?;
+    fn remove(&self, coll: impl ToString, key: impl ToString) -> Result<()> {
+        let _: () = redis::cmd("HDEL")
+            .arg(coll.to_string())
+            .arg(key.to_string())
+            .query(&*self.conn)?;
 
         Ok(())
     }

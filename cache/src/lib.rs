@@ -1,78 +1,63 @@
-pub use backends::*;
+#[macro_use]
+extern crate log;
+
 pub use errors::Error;
 
-use crate::backends::{AsyncBackend, Backend};
-use crate::prelude::*;
+use crate::{
+    backends::{AsyncBackend, Backend},
+    structures::{
+        channels::*,
+        emojis::*,
+        guilds::*,
+        presences::*,
+        roles::*,
+        voice_states::*,
+    },
+};
 
-mod backends;
+/// At set of included storage backends.
+pub mod backends;
+/// A collection of included stores for caching Discord objects.
+pub mod structures;
 mod errors;
 mod prelude;
 
 /// The main cache client.
 #[derive(Clone)]
-pub struct CacheClient<T: Backend> {
+pub struct CacheClient<T: Backend + Clone> {
+    /// A store for caching Discord guilds.
+    pub guilds: GuildStore<T>,
     /// The underlying backend instance.
     pub backend: T
 }
 
-impl <T: Backend> CacheClient <T>
-    where T: Backend
-{
-    /// Creates a new caching layer using an asynchronous Redis connection.
-    #[allow(dead_code)]
+impl<T: Backend + Clone> CacheClient<T> {
+    /// Creates a new synchronous client with the provided backend.
     pub fn new(backend: T) -> Self {
-        Self { backend }
-    }
-    /// Synchronously get an item from the cache.
-    pub fn get<C>(self, coll: &str, id: String) -> Option<C>
-        where C: DeserializeOwned + Send + 'static
-    {
-        self.backend.get(coll, id)
-    }
-
-    /// Synchronously get all items from the cache.
-    pub fn get_all<C>(self, coll: &str) -> Result<HashMap<String, C>>
-        where C: DeserializeOwned + Send + 'static
-    {
-        self.backend.get_all(coll)
+        CacheClient {
+            backend: backend.clone(),
+            guilds: GuildStore { backend },
+        }
     }
 }
 
 /// An asynchronous cache client for working with backends.
 #[derive(Clone)]
-pub struct CacheClientAsync<T: AsyncBackend> {
+pub struct CacheClientAsync<T: AsyncBackend + Send + Clone> {
+    /// A store for caching Discord guilds.
+    pub guilds: GuildStoreAsync<T>,
     /// The underlying backend instance.
     pub backend: T
 }
 
-impl <T: AsyncBackend> CacheClientAsync <T> {
-    #[allow(dead_code)]
+impl<T: AsyncBackend + Send + Clone> CacheClientAsync<T> {
+    /// Creates a new asynchronous client with the provided backend.
     pub fn new(backend: T) -> Self {
-        Self { backend }
-    }
-    /// Asynchronously gets an item from the cache.
-    pub fn get<C>(self, coll: &str, id: String) -> Box<Future<Item = Option<C>, Error = Error>>
-        where C: DeserializeOwned + Send
-    {
-        self.backend.get_async(coll, id)
-    }
-
-    /// Asynchronously get all items from the cache.
-    pub fn get_all<C>(self, coll: &str) -> Box<Future<Item = HashMap<String, C>, Error = Error>>
-        where C: DeserializeOwned + Send
-    {
-        self.backend.get_all_async(coll)
-    }
-
-
-    /// Asynchronously sets an item into the cache.
-    pub fn set<C: Serialize>(self, coll: &str, key: String, value: C) -> Box<Future<Item = (), Error = Error>> {
-        self.backend.set_async(coll, key, value)
-    }
-
-    /// Asynchronously remove an item from the cache.
-    pub fn remove_async(self, coll: &str, id: String) -> Box<Future<Item = (), Error = Error>> {
-        self.backend.remove_async(coll, id)
+        CacheClientAsync {
+            backend: backend.clone(),
+            guilds: GuildStoreAsync { backend },
+        }
     }
 }
+
 

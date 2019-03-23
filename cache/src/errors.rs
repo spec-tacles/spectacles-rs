@@ -1,6 +1,7 @@
 use std::{
     error::Error as StdError,
     fmt::{Display, Formatter, Result as FmtResult},
+    num::ParseIntError,
     result::Result as StdResult
 };
 
@@ -13,6 +14,7 @@ pub type Result<T> = StdResult<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     Redis(RedisError),
+    ParseInt(ParseIntError),
     Json(JsonError)
 }
 
@@ -28,6 +30,7 @@ impl StdError for Error {
     fn description(&self) -> &str {
         match self {
             Error::Redis(e) => e.description(),
+            Error::ParseInt(e) => e.description(),
             Error::Json(e) => e.description()
         }
     }
@@ -42,5 +45,12 @@ impl From<JsonError> for Error {
 impl From<RedisError> for Error {
     fn from(err: RedisError) -> Self {
         Error::Redis(err)
+    }
+}
+
+
+impl From<ParseIntError> for Error {
+    fn from(err: ParseIntError) -> Self {
+        Error::ParseInt(err)
     }
 }

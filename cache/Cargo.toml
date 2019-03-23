@@ -9,6 +9,9 @@ edition = "2018"
 name = "spectacles_cache"
 
 [dependencies]
+spectacles-model = "0.1.93"
+hashbrown = "0.1.8"
+log = "0.4.6"
 redis = "0.10.0"
 serde = "1.0.89"
 serde_json = "1.0.39"
