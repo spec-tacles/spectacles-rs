@@ -93,8 +93,8 @@ impl<T: AsyncBackend> RoleStoreAsync<T> {
     }
 
     /// Removes a role from the cache.
-    pub fn remove(&self, guild_id: impl Into<u64>, role: Role) -> impl Future<Item = (), Error = Error> {
-        self.backend.remove(format!("ROLES:{}", guild_id.into()), role.id.0)
+    pub fn remove(&self, guild_id: impl Into<u64>, role: impl Into<u64>) -> impl Future<Item = (), Error = Error> {
+        self.backend.remove(format!("ROLES:{}", guild_id.into()), role.into().to_string())
         
     }
 }

@@ -2,7 +2,7 @@
 name = "spectacles-model"
 description = "Discord types and structures for Spectacles.rs."
 repository = "https://github.com/spec-tacles/spectacles-rs"
-version = "0.1.95"
+version = "0.1.96"
 license = "MIT"
 authors = ["Texlo-Dev <richrancy@gmail.com>"]
 edition = "2018"

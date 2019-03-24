@@ -11,8 +11,8 @@ use crate::{
 use crate::snowflake::Snowflake;
 
 pub use self::{
-    member::GuildMember,
-    role::Role,
+    member::*,
+    role::*,
 };
 
 mod role;
