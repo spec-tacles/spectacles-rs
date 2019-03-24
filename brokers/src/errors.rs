@@ -2,6 +2,8 @@ use std::{
     error::Error as StdError,
     fmt::{Display, Formatter, Result as FmtResult},
     io::Error as IoError,
+    r#str::Utf8Error,
+    result::Result as StdResult,
 };
 
 use failure::{Compat, Fail};
@@ -13,6 +15,7 @@ use lapin_futures_native_tls::{
 /// Details the various errors of the crate.
 #[derive(Debug)]
 pub enum Error {
+    Utf8(Utf8Error),
     Lapin(Compat<LapinError>),
     LapinTls(Compat<LapinTlsError>),
     Io(IoError)
@@ -24,10 +27,13 @@ impl Display for Error {
     }
 }
 
+pub type BrokerResult<T> = StdResult<T, Error>;
+
 impl StdError for Error {
     fn description(&self) -> &str {
         match self {
             Error::Lapin(e) => e.description(),
+            Error::Utf8(e) => e.description(),
             Error::LapinTls(e) => e.description(),
             Error::Io(e) => e.description()
         }
@@ -43,6 +49,12 @@ impl From<LapinError> for Error {
 impl From<LapinTlsError> for Error {
     fn from(err: LapinTlsError) -> Self {
         Error::LapinTls(err.compat())
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(err: Utf8Error) -> Self {
+        Error::Utf8(err)
     }
 }
 

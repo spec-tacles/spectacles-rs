@@ -42,7 +42,10 @@
 //!  }
 //! ```
 
+#![feature(futures_api, async_await, await_macro)]
 #[macro_use] extern crate log;
+#[macro_use]
+extern crate tokio;
 
 #[warn(rust_2018_idioms)]
 

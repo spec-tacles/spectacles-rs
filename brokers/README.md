@@ -7,33 +7,24 @@ Message brokers which allow for simple communication between Spectacles services
 ## Available Brokers
 - AMQP - An interface to connect to an AMQP-compliant server.
 
-## Example AMQP Publisher
 ```rust,norun
+#![feature(futures_api, async_await, await_macro)]
+#[macro_use] extern crate tokio;
 use std::env::var;
-use futures::future::Future;
-use spectacles_brokers::amqp::*;
-
+use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
 
 fn main() {
-    let addr = var("AMQP_ADDR").expect("No AMQP server address found.");
-    let connect = AmqpBroker::new(&addr, "test".to_string(), None);
-    let result = connect.and_then(|broker| {
-        let json = r#"{"message": "Example Publish."}"#.as_bytes();
-        broker.publish(
-            "HELLO", 
-            json.to_vec(), 
-            AmqpProperties::default().with_content_type("application/json".to_string()
-        )
-    });
-    let success = result.map(|_| {
-        println!("Message publish succeeded, check the other window!");
-    }).map_err(|err| {
-        eprintln!("An error was encountered during publish: {}", err);
-    });
-
-    tokio::run(success);
+    tokio::run_async(async {
+        let addr = var("AMQP_URL").expect("No AMQP server address found");
+        let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
+            .expect("Failed to connect to broker");
+        let json = b"{'message': 'A MESSAGE HERE'}";
+        match await!(broker.publish("MYQUEUE", json.to_vec(), properties)) {
+            Ok(_) => println!("{} Messages published.", publish_count),
+            Err(e) => eprintln!("An error was encountered during publish: {}", e)
+        }
+    }
 }
-
 ```
 
 More examples can be found in the [`examples`] directory.
