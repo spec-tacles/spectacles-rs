@@ -11,7 +11,7 @@ pub struct RedisBackendAsync {
     pub conn: SharedConnection
 }
 
-impl AsyncBackend for RedisBackendAsync {
+impl AsyncBackend for RedisBackendAsync {    
     fn get(&self, coll: impl ToString, id: impl ToString) -> Box<Future<Item=String, Error=Error> + Send> {
         let query = redis::cmd("HGET")
             .arg(coll.to_string())
@@ -60,5 +60,12 @@ impl AsyncBackend for RedisBackendAsync {
                 .map(|(_, ())| ())
                 .from_err()
         )
+    }
+}
+
+impl RedisBackendAsync {
+    /// Creates an asynchronous Redis backend with the provided connection.
+    pub fn new(conn: SharedConnection) -> Self {
+        Self { conn }
     }
 }

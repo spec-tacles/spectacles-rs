@@ -10,6 +10,11 @@ pub struct GuildStore<T: Backend> {
 }
 
 impl<T: Backend> GuildStore<T> {
+    /// Creates a new store instance.
+    pub fn new(backend: T) -> Self {
+        Self { backend }
+    }
+
     /// Gets a guild from the cache, by ID.
     pub fn get(&self, id: impl Into<u64>) -> Option<Guild> {
         let res = self.backend.get("GUILDS", id.into().to_string()).unwrap();
@@ -39,7 +44,7 @@ impl<T: Backend> GuildStore<T> {
         };
         for emoji in entity.emojis {
             let emoji_str = serde_json::to_string(&emoji)?;
-            self.backend.set(format!("ROLES:{}", &entity.id), emoji.id.unwrap().0, emoji_str)?;
+            self.backend.set("EMOJIS", emoji.id.expect("Invalid Emoji ID provided").0, emoji_str)?;
         };
         for voice_state in entity.voice_states {
             let voice_str = serde_json::to_string(&voice_state)?;
@@ -81,11 +86,17 @@ pub struct GuildStoreAsync<T: AsyncBackend> {
 }
 
 impl<T: AsyncBackend> GuildStoreAsync<T> {
+    /// Creates a new store instance.
+    pub fn new(backend: T) -> Self {
+        Self { backend }
+    }
+    
     /// Gets a guild from the cache, by ID.
     pub fn get(self, id: impl Into<u64>) -> impl Future<Item=Option<Guild>, Error=Error> {
-        self.backend.get("GUILDS", id.into()).map(|s|
-            serde_json::from_str::<Guild>(&s).ok()
-        )
+        self.backend.get("GUILDS", id.into().to_string()).then(|res| match res {
+            Ok(r) => Ok(serde_json::from_str::<Guild>(&r).ok()),
+            Err(_) => Ok(None)
+        })
     }
 
     /// Gets all guilds from the cache.

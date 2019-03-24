@@ -47,3 +47,10 @@ impl Backend for RedisBackend {
         Ok(())
     }
 }
+
+impl RedisBackend {
+    /// Creates an Redis backend with the provided connection.
+    pub fn new(conn: RedisConnection) -> Self {
+        Self { conn: Arc::new(conn) }
+    }
+}

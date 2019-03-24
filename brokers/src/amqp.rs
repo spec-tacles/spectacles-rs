@@ -1,8 +1,5 @@
-use std::sync::Arc;
-use std::time::Duration;
-
 use futures::{future::Future, Stream};
-use futures_backoff::Strategy;
+// use futures_backoff::Strategy;
 use lapin_futures_native_tls::{AMQPConnectionNativeTlsExt, AMQPStream};
 use lapin_futures_native_tls::lapin::{
     channel::{
