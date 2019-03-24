@@ -138,7 +138,7 @@ impl AmqpBroker {
     /// }
     /// ```
     ///
-    /// [`AmqpBroker`]: amqp/struct.AmqpBroker.html
+    /// [`AmqpBroker`]: struct.AmqpBroker.html
     ///
     pub async fn subscribe<C>(self, evt: String, mut cb: C) -> BrokerResult<AmqpBroker>
         where C: FnMut(&str) + Send + Sync + 'static
