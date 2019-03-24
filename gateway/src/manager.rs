@@ -1,10 +1,10 @@
 use std::{
     borrow::BorrowMut,
-    collections::HashMap,
     sync::Arc,
     time::Duration,
     time::Instant
 };
+use hashbrown::HashMap;
 
 use futures::{
     future::Future,
@@ -37,10 +37,6 @@ pub enum ShardStrategy {
     Recommended,
     /// Spawns shards according to the amount specified, starting from shard 0.
     SpawnAmount(usize)
-}
-
-pub struct ShardMessage {
-
 }
 
 /// A collection of shards, keyed by their ID.
