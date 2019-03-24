@@ -19,3 +19,21 @@ pub struct Role {
     /// Whether or not this role is mentionable.
     pub mentionable: bool
 }
+
+/// Represents a packet sent by the gateway when a guild role is created/updated.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GuildRoleCreateOrUpdate {
+    /// The guild ID of the guild.
+    pub guild_id: Snowflake,
+    /// The role that was created.
+    pub role: Role
+}
+
+/// Represents a packet sent by the gateway when a guild role is deleted.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GuildRoleDelete {
+    /// The guild ID of the guild.
+    pub guild_id: Snowflake,
+    /// The role ID of the role that was deleted.
+    pub role: Snowflake
+}

@@ -34,3 +34,12 @@ pub struct MessageReaction {
     /// Emoji information.
     pub emoji: Emoji
 }
+
+/// The gateway event emitted when a guild's emojis are updated.
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct GuildEmojisUpdate {
+    /// The guild ID that the emojis belong to.
+    pub guild_id: Snowflake,
+    /// The collion of guild emojis.
+    pub emojis: Vec<Emoji>
+}
