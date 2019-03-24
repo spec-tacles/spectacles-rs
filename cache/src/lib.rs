@@ -12,6 +12,7 @@ use crate::{
         members::*,
         presences::*,
         roles::*,
+        users::*,
         voice_states::*,
     },
 };
@@ -38,6 +39,8 @@ pub struct CacheClient<T: Backend + Clone> {
     pub presences: PresenceStore<T>,
     /// A store for caching Discord roles.
     pub roles: RoleStore<T>,
+    /// A store for caching Discord users.
+    pub users: UserStore<T>,
     /// A store for caching Discord voice states.
     pub voice_states: VoiceStateStore<T>,
     /// The underlying backend instance.
@@ -55,6 +58,7 @@ impl<T: Backend + Clone> CacheClient<T> {
             members: MemberStore::new(backend.clone()),
             presences: PresenceStore::new(backend.clone()),
             roles: RoleStore::new(backend.clone()),
+            users: UserStore::new(backend.clone()),
             voice_states: VoiceStateStore::new(backend.clone())
         }
     }
@@ -75,6 +79,8 @@ pub struct CacheClientAsync<T: AsyncBackend + Send + Clone> {
     pub presences: PresenceStoreAsync<T>,
     /// A store for caching Discord roles.
     pub roles: RoleStoreAsync<T>,
+    /// A store for caching Discord users.
+    pub users: UserStoreAsync<T>,
     /// A store for caching Discord voice states.
     pub voice_states: VoiceStateStoreAsync<T>,
     /// The underlying backend instance.
@@ -92,6 +98,7 @@ impl<T: AsyncBackend + Send + Clone> CacheClientAsync<T> {
             members: MemberStoreAsync::new(backend.clone()),
             presences: PresenceStoreAsync::new(backend.clone()),
             roles: RoleStoreAsync::new(backend.clone()),
+            users: UserStoreAsync::new(backend.clone()),
             voice_states: VoiceStateStoreAsync::new(backend.clone())
         }
     }
