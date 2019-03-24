@@ -34,17 +34,16 @@ struct ConsumerState {
     connection: LapinClient<AMQPStream>,
     heartbeat: Arc<HeartbeatHandle>,
 }
-/// Central AMQP message brokers client.
+
+/// Central AMQP message brokers client. The preferred AMQP server is RabbitMQ, although the broker will work with AMQP-compliant server.
 #[derive(Clone)]
 pub struct AmqpBroker {
-    /// A dedicated connection for publishing AMQP messages.
-    pub pub_state: PubState,
-    /// A dedicated connection for consuming AMQP messages.
-    pub consume_state: ConsumerState,
     /// The group used for consuming and producing messages.
     pub group: String,
     /// The subgroup used for consuming and producing messages.
-    pub subgroup: Option<String>
+    pub subgroup: Option<String>,
+    pub_state: PubState,
+    consume_state: ConsumerState,
 }
 
 impl AmqpBroker {
@@ -82,20 +81,21 @@ impl AmqpBroker {
     /// ```rust,norun
     /// #![feature(futures_api, async_await, await_macro)]
     /// #[macro_use] extern crate tokio;
+    ///
     /// use std::env::var;
     /// use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
     ///
     /// fn main() {
-    ///   tokio::run_async(async {
-    ///     let addr = var("AMQP_URL").expect("No AMQP server address found");
-    ///     let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
-    ///         .expect("Failed to connect to broker");
-    ///     let json = b"{'message': 'A MESSAGE HERE'}";
-    ///     match await!(broker.publish("MYQUEUE", json.to_vec(), properties)) {
-    ///         Ok(_) => println!("{} Messages published.", publish_count),
-    ///         Err(e) => eprintln!("An error was encountered during publish: {}", e)
-    ///      }
-    ///   }
+    ///     tokio::run_async(async {
+    ///         let addr = var("AMQP_URL").expect("No AMQP server address found");
+    ///         let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
+    ///             .expect("Failed to connect to broker");
+    ///         let json = b"{'message': 'A MESSAGE HERE'}";
+    ///         match await!(broker.publish("MYQUEUE", json.to_vec(), properties)) {
+    ///             Ok(_) => println!("{} Messages published.", publish_count),
+    ///             Err(e) => eprintln!("An error was encountered during publish: {}", e)
+    ///         }
+    ///     }
     /// }
     /// ```
     ///
@@ -116,25 +116,29 @@ impl AmqpBroker {
     }
 
     /// Subscribes to the provided event, with a callback that is called when an event is received.
+    /// Returns an owned [`AmqpBroker`] instance, which you can use to subscribe to additional events.
     /// # Example
     /// ```rust,norun
     /// #![feature(futures_api, async_await, await_macro)]
     /// #[macro_use] extern crate tokio;
+    ///
     /// use std::env::var;
     /// use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
     ///
     /// fn main() {
-    ///   tokio::run_async(async {
-    ///     let addr = var("AMQP_URL").expect("No AMQP server address found");
-    ///     let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
-    ///         .expect("Failed to connect to broker");
-    ///     let json = b"{'message': 'Example Publish.'}";
-    ///     await!(broker.subscribe("MYQUEUE".to_string(), |payload| {
-    ///          println!("Message received: {}", payload);
-    ///      })).expect("Failed to subscribe to this event.");
-    ///   }
+    ///     tokio::run_async(async {
+    ///         let addr = var("AMQP_URL").expect("No AMQP server address found");
+    ///         let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
+    ///             .expect("Failed to connect to broker");
+    ///         let json = b"{'message': 'Example Publish.'}";
+    ///         await!(broker.subscribe("MYQUEUE".to_string(), |payload| {
+    ///             println!("Message received: {}", payload);
+    ///         })).expect("Failed to subscribe to this event.");
+    ///     }
     /// }
     /// ```
+    ///
+    /// [`AmqpBroker`]: amqp/struct.AmqpBroker.html
     ///
     pub async fn subscribe<C>(self, evt: String, mut cb: C) -> BrokerResult<AmqpBroker>
         where C: FnMut(&str) + Send + Sync + 'static

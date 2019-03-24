@@ -7,9 +7,12 @@ Message brokers which allow for simple communication between Spectacles services
 ## Available Brokers
 - AMQP - An interface to connect to an AMQP-compliant server.
 
+### Example: Publishing a message
+
 ```rust,norun
 #![feature(futures_api, async_await, await_macro)]
 #[macro_use] extern crate tokio;
+
 use std::env::var;
 use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
 

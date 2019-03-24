@@ -1,33 +1,33 @@
 //! # spectacles-brokers
 //!
-//! Message brokers which allow for simple communication between Spectacles services.
+//! A collection of message brokers which allow for simple communication between microservices.
+//!
+//! ## About
+//! With a message broker, you can unify all of your microservices, and communicate seamlessly, across servers.
 //!
 //! ## Available Brokers
 //! - AMQP - An interface to connect to an AMQP-compliant server.
+//!
+//! See each broker folder to learn more.
 
-//! ## Example AMQP Publisher
 //! ```rust,norun
+//! #![feature(futures_api, async_await, await_macro)]
+//! #[macro_use] extern crate tokio;
+//! 
 //! use std::env::var;
-//! use std::net::SocketAddr;
-//! use futures::future::Future;
-//! use spectacles_brokers::AmqpBroker;
+//! use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
 //!
 //! fn main() {
-//!    let addr = var("AMQP_ADDR").expect("No AMQP server address found.");
-//!    let addr: SocketAddr = addr.parse();
-//!
-//!    let connect = AmqpBroker::new(&addr, "test".to_string(), None);
-//!    let result = connect.and_then(|broker| {
-//!        let json = r#"{"message": "Example Publish."}"#.as_bytes();
-//!        broker.publish("HELLO", json.to_vec())
-//!    });
-//!    let success = result.map(|_| {
-//!        println!("Message publish succeeded, check the other window!");
-//!    }).map_err(|err| {
-//!        eprintln!("An error was encountered during publish: {}", err);
-//!    });
-//!
-//!    tokio::run(success);
+//!     tokio::run_async(async {
+//!         let addr = var("AMQP_URL").expect("No AMQP server address found");
+//!         let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
+//!             .expect("Failed to connect to broker");
+//!         let json = b"{'message': 'A MESSAGE HERE'}";
+//!         match await!(broker.publish("MYQUEUE", json.to_vec(), properties)) {
+//!             Ok(_) => println!("{} Messages published.", publish_count),
+//!             Err(e) => eprintln!("An error was encountered during publish: {}", e)
+//!         }
+//!     }
 //! }
 //! ```
 //!
@@ -41,7 +41,3 @@ mod errors;
 /// Utilities for interfacing with an AMQP-based message broker.
 pub mod amqp;
 
-/// Event handler for receiving messages from a message brokers.
-pub trait MessageHandler {
-    fn on_message(&self, event: &str, payload: String);
-}
