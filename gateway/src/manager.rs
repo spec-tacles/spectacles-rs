@@ -4,7 +4,6 @@ use std::{
     time::Duration,
     time::Instant
 };
-use hashbrown::HashMap;
 
 use futures::{
     future::Future,
@@ -14,6 +13,7 @@ use futures::{
         UnboundedReceiver, UnboundedSender
     }
 };
+use hashbrown::HashMap;
 use parking_lot::{Mutex, RwLock};
 use tokio::runtime::current_thread;
 use tokio::timer::Delay;
@@ -50,7 +50,8 @@ pub struct ShardManager<H: EventHandler + Send + Sync + 'static> {
     pub options: Option<ManagerOptions<H>>,
     /// A collection of shards that have been spawned.
     pub shards: Arc<RwLock<ShardMap>>,
-    _spawn_amount: usize,
+    /// The total amount of shards that this manager will spawn.
+    pub total_shards: usize,
     queue_sender: MpscSender<usize>,
     queue_receiver: Option<MpscReceiver<usize>>,
     reconnect_queue: ShardQueue,
@@ -84,7 +85,7 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
                     options: Some(options),
                     queue_receiver: Some(queue_receiver),
                     message_stream: None,
-                    _spawn_amount: shard_count,
+                    total_shards: shard_count,
                     shards: Arc::new(RwLock::new(HashMap::new())),
                 }
         })
@@ -93,7 +94,7 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
     /// Spawns shards up to the specified amount and identifies them with Discord.
     pub fn begin_spawn(mut self) {
         info!("Bootstrapping ShardManager.");
-        let shard_count = self._spawn_amount.clone();
+        let shard_count = self.total_shards.clone();
         debug!("Attempting to spawn {} shards.", &shard_count);
         for i in 0..shard_count {
             trace!("Sending shard {} to queue.", &i);
@@ -119,7 +120,7 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
                 futures::future::ok(())
             })
             .map_err(|_| error!("Failed to pop shard in reconnect queue."))
-            .and_then(move |_| receive_chan(
+            .and_then(move |_| initialize_receiver(
                 receiver,
                 token,
                 shard_count,
@@ -132,44 +133,35 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
             let current_shard = shard.borrow_mut();
             let mut shard = current_shard.lock().clone();
             trace!("Websocket message received: {:?}", &message.clone());
-            let event = shard.resolve_packet(&message).expect("Failed to parse the shard message.");
+            let event = shard.resolve_packet(&message).expect("Failed to parse the shard message");
             if let Opcodes::Dispatch = event.op {
                 tokio::spawn({
                     opts.handler.on_packet(&mut shard, event.clone());
                     futures::future::ok(())
                 });
-            }
-            let action = shard.fulfill_gateway(event.clone());
-            match action {
-                Ok(a) => match a {
-                    ShardAction::Autoreconnect => {
-                        current_thread::spawn(shard.autoreconnect().map_err({
-                            let shard = shard.info[0].clone();
-                            move |err| {
-                                error!("Shard {} failed to autoreconnect. {}", shard, err);
-                            }
-                        }));
-                    },
-                    ShardAction::Identify => {
-                        debug!("[Shard {}] Identifying with the gateway.", &shard.info[0]);
-                        if let Err(e) = shard.identify() {
-                            warn!("[Shard {}] Failed to identify with gateway. {:?}", &shard.info[0], e);
-                        };
-                    },
-                    ShardAction::Reconnect => {
-                        shard.reconnect();
-                        info!("[Shard {}] Reconnection successful.", &shard.info[0]);
-                    },
-                    ShardAction::Resume => {
-                        shard.resume();
-                        info!("[Shard {}] Successfully resumed session.", &shard.info[0]);
-                    },
-                    _ => {}
-                },
-                Err(e) => {
-                    error!("Failed to perform action for Shard {}. {}", &shard.info[0], e);
-                },
             };
+
+            let action = shard.fulfill_gateway(event.clone());
+            if let Ok(ShardAction::Autoreconnect) = action {
+                current_thread::spawn(shard.autoreconnect().map_err({
+                    let shard = shard.info[0].clone();
+                    move |err| {
+                        error!("Shard {} failed to autoreconnect. {}", shard, err);
+                    }
+                }))
+            } else if let Ok(ShardAction::Identify) = action {
+                debug!("[Shard {}] Identifying with the gateway.", &shard.info[0]);
+                if let Err(e) = shard.identify() {
+                    warn!("[Shard {}] Failed to identify with gateway. {:?}", &shard.info[0], e);
+                };
+            } else if let Ok(ShardAction::Reconnect) = action {
+                shard.reconnect();
+                info!("[Shard {}] Reconnection successful.", &shard.info[0]);
+            } else if let Ok(ShardAction::Resume) = action {
+                shard.resume();
+                info!("[Shard {}] Successfully resumed session.", &shard.info[0]);
+            };
+
             if let Some(GatewayEvent::READY) = event.t {
                 &(self).queue();
                 tokio::spawn({
@@ -183,21 +175,18 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
     }
 
     fn queue(&mut self) {
-        current_thread::spawn({
-            self.reconnect_queue.pop_front()
-                .and_then({
-                    let mut sender = self.queue_sender.clone();
-                    move |id| {
-                        if let Some(next) = id {
-                            if let Err(e) = sender.try_send(next) {
-                                error!("Could not place shard ID in queue. {:?}", e);
-                            }
-                        }
-
-                        futures::future::ok(())
+        current_thread::spawn(self.reconnect_queue.pop_front().and_then({
+            let mut sender = self.queue_sender.clone();
+            move |id| {
+                if let Some(next) = id {
+                    if let Err(e) = sender.try_send(next) {
+                        error!("Could not place shard ID in queue. {:?}", e);
                     }
-                })
-        });
+                }
+
+                futures::future::ok(())
+            }
+        }));
     }
 
 
@@ -209,7 +198,8 @@ impl <H: EventHandler + Send + Sync + 'static> ShardManager<H> {
     */
 
 }
-fn receive_chan(
+
+fn initialize_receiver(
     receiver: MpscReceiver<usize>,
     token: String,
     shardcount: usize,
@@ -221,7 +211,7 @@ fn receive_chan(
         let shardmap = shardmap.clone();
         let token = token.clone();
         let sender = sender.clone();
-        Delay::new(Instant::now() + Duration::from_secs(5))
+        Delay::new(Instant::now() + Duration::from_secs(6))
             .map_err(|err| error!("Failed to pause before spawning the next shard. {:?}", err))
             .and_then(move |_| {
                 current_thread::spawn(create_shard(token, [shard_id, shardcount], sender)
