@@ -10,6 +10,8 @@ pub mod members;
 pub mod presences;
 /// Interfaces for caching Discord roles.
 pub mod roles;
+/// Interfaces for caching Discord users.
+pub mod users;
 /// Interfaces for caching Discord voice states.
 pub mod voice_states;
 
