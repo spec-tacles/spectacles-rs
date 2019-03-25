@@ -91,6 +91,7 @@ impl AmqpBroker {
     ///         let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
     ///             .expect("Failed to connect to broker");
     ///         let json = b"{'message': 'A MESSAGE HERE'}";
+    /// 
     ///         match await!(broker.publish("MYQUEUE", json.to_vec(), properties)) {
     ///             Ok(_) => println!("{} Messages published.", publish_count),
     ///             Err(e) => eprintln!("An error was encountered during publish: {}", e)
@@ -131,6 +132,7 @@ impl AmqpBroker {
     ///         let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
     ///             .expect("Failed to connect to broker");
     ///         let json = b"{'message': 'Example Publish.'}";
+    ///
     ///         await!(broker.subscribe("MYQUEUE".to_string(), |payload| {
     ///             println!("Message received: {}", payload);
     ///         })).expect("Failed to subscribe to this event.");

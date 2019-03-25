@@ -22,6 +22,7 @@ fn main() {
         let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
             .expect("Failed to connect to broker");
         let json = b"{'message': 'A MESSAGE HERE'}";
+        
         match await!(broker.publish("MYQUEUE", json.to_vec(), properties)) {
             Ok(_) => println!("{} Messages published.", publish_count),
             Err(e) => eprintln!("An error was encountered during publish: {}", e)
