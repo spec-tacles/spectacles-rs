@@ -133,16 +133,16 @@ impl AmqpBroker {
     ///             .expect("Failed to connect to broker");
     ///         let json = b"{'message': 'Example Publish.'}";
     ///
-    ///         await!(broker.subscribe("MYQUEUE".to_string(), |payload| {
+    ///         broker.subscribe("MYQUEUE".to_string(), |payload| {
     ///             println!("Message received: {}", payload);
-    ///         })).expect("Failed to subscribe to this event.");
+    ///         });
     ///     }
     /// }
     /// ```
     ///
     /// [`AmqpBroker`]: struct.AmqpBroker.html
     ///
-    pub async fn subscribe<C>(self, evt: String, mut cb: C) -> BrokerResult<AmqpBroker>
+    pub fn subscribe<C>(self, evt: String, mut cb: C) -> Self
         where C: FnMut(&str) + Send + Sync + 'static
     {
         let queue_name = match &self.subgroup {
@@ -181,6 +181,6 @@ impl AmqpBroker {
             };
         });
 
-        Ok(self)
+        self
     }
 }
