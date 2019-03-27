@@ -106,7 +106,7 @@ impl AmqpBroker {
     pub async fn publish<'a>(&'a self, evt: &'a str, payload: Vec<u8>, properties: AmqpProperties) -> BrokerResult<()> {
         debug!("Publishing event: {} to the AMQP server.", evt);
         tokio::await!(self.pub_state.channel.basic_publish(
-            self.group.as_ref(),
+            &self.group,
             evt,
             payload,
             BasicPublishOptions::default(),
@@ -133,7 +133,7 @@ impl AmqpBroker {
     ///             .expect("Failed to connect to broker");
     ///         let json = b"{'message': 'Example Publish.'}";
     ///
-    ///         broker.subscribe("MYQUEUE".to_string(), |payload| {
+    ///         broker.subscribe("MYQUEUE", |payload| {
     ///             println!("Message received: {}", payload);
     ///         });
     ///     }
@@ -142,7 +142,7 @@ impl AmqpBroker {
     ///
     /// [`AmqpBroker`]: struct.AmqpBroker.html
     ///
-    pub fn subscribe<C>(self, evt: String, mut cb: C) -> Self
+    pub fn subscribe<C>(self, evt: &str, mut cb: C) -> Self
         where C: FnMut(&str) + Send + Sync + 'static
     {
         let queue_name = match &self.subgroup {
@@ -159,6 +159,7 @@ impl AmqpBroker {
         };
         let state = self.consume_state.clone();
         let group = self.group.clone();
+        let evnt = evt.to_string();
         tokio::spawn_async(async move {
             let channel = tokio::await!(state.connection.create_channel())
                 .expect("Failed to create channel");
@@ -167,7 +168,7 @@ impl AmqpBroker {
             let queue = tokio::await!(channel.queue_declare(&queue_name, queue_opts, FieldTable::new()))
                 .expect("Failed to declare queue");
             debug!("Channel ID: {} has declared queue: {}", channel.id, queue_name);
-            tokio::await!(channel.queue_bind(&queue_name, &group, &evt, QueueBindOptions::default(), FieldTable::new()))
+            tokio::await!(channel.queue_bind(&queue_name, &group, &evnt, QueueBindOptions::default(), FieldTable::new()))
                 .expect("Failed to bind channel to queue");
             let mut consumer = tokio::await!(channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new()))
                 .expect("Failed to create consumer");
