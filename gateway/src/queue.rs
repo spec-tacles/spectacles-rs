@@ -1,8 +1,8 @@
-use std::collections::vec_deque::VecDeque;
+// Credits to Serenity for this awesome shard queue.
+
 use std::sync::Arc;
 
-// Credits to Serenity for this awesome shard queue.
-use futures::{AsyncSink, future, Future, Poll, Sink, StartSend, sync::mpsc::{SendError, UnboundedSender}};
+use futures::{AsyncSink, Poll, Sink, StartSend, sync::mpsc::{SendError, UnboundedSender}};
 use parking_lot::Mutex;
 use tokio_tungstenite::tungstenite::{
     Error as TungsteniteError,
@@ -65,35 +65,3 @@ impl ::std::fmt::Debug for MessageSinkError {
         })
     }
 }
-
-pub trait ReconnectQueue {
-    type Error: 'static;
-    fn push_back(&mut self, shard_id: usize) -> Box<Future<Item = (), Error = Self::Error> + Send>;
-    fn pop_front(&mut self) -> Box<Future<Item = Option<usize>, Error = Self::Error> + Send>;
-}
-
-#[derive(Clone)]
-pub struct ShardQueue {
-    pub queue: VecDeque<usize>,
-}
-
-impl ShardQueue {
-    pub fn new(shard_count: usize) -> Self {
-        Self {
-            queue: VecDeque::with_capacity(shard_count)
-        }
-    }
-}
-
-impl ReconnectQueue for ShardQueue {
-    type Error = ();
-    fn push_back(&mut self, shard_id: usize) -> Box<Future<Item = (), Error = Self::Error> + Send> {
-        self.queue.push_back(shard_id);
-        Box::new(future::ok(()))
-    }
-
-    fn pop_front(&mut self) -> Box<Future<Item = Option<usize>, Error = Self::Error> + Send> {
-        Box::new(future::ok(self.queue.pop_front()))
-    }
-}
-

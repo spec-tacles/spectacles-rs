@@ -58,6 +58,7 @@ mod manager;
 mod shard;
 mod constants;
 mod errors;
+mod queue;
 
 /// Options for Creating a new shard manager.
 pub struct ManagerOptions<H>

@@ -24,6 +24,7 @@ use spectacles_model::gateway::{GatewayBot, Opcodes, ReceivePacket};
 use crate::{
     constants::API_BASE,
     errors::*,
+    queue::{MessageSink, MessageSinkError},
     shard::{Shard, ShardAction}
 };
 
