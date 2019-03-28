@@ -39,12 +39,11 @@ pub struct SessionStartLimit {
 
 /// A JSON packet that the client would receive over the Discord gateway.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ReceivePacket<'a> {
+pub struct ReceivePacket {
     /// The opcode for this payload.
     pub op: Opcodes,
     /// The JSON value for this payload.
-    #[serde(borrow)]
-    pub d: &'a serde_json::value::RawValue,
+    pub d: Box<serde_json::value::RawValue>,
     pub s: Option<u64>,
     /// The name of the event that was fired, if applicable.
     pub t: Option<GatewayEvent>
