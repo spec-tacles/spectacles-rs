@@ -37,23 +37,31 @@ pub enum ShardStrategy {
     SpawnAmount(usize)
 }
 
+#[derive(Clone)]
+/// Information about a Discord Gateway event received for a shard.
+pub struct ShardEvent {
+    pub shard: ManagerShard,
+    pub packet: ReceivePacket,
+}
 /// A collection of shards, keyed by shard ID.
 pub type ShardMap = HashMap<usize, Arc<Mutex<Shard>>>;
-type MessageStream = UnboundedReceiver<(Arc<Mutex<Shard>>, TungsteniteMessage)>;
+/// An alias for a shard spawned with the sharding manager.
+pub type ManagerShard = Arc<Mutex<Shard>>;
+type MessageStream = UnboundedReceiver<(ManagerShard, TungsteniteMessage)>;
 
 // A stream of shards being spawned and emitting the ready event.
 pub struct Spawner {
-    inner: UnboundedReceiver<Arc<Mutex<Shard>>>
+    inner: UnboundedReceiver<ManagerShard>
 }
 
 impl Spawner {
-    fn new(receiver: UnboundedReceiver<Arc<Mutex<Shard>>>) -> Self {
+    fn new(receiver: UnboundedReceiver<ManagerShard>) -> Self {
         Spawner { inner: receiver }
     }
 }
 
 impl Stream for Spawner {
-    type Item = Arc<Mutex<Shard>>;
+    type Item = ManagerShard;
     type Error = ();
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
@@ -63,24 +71,23 @@ impl Stream for Spawner {
 
 /// A stream of shard events.
 pub struct EventHandle {
-    inner: UnboundedReceiver<ReceivePacket>
+    inner: UnboundedReceiver<ShardEvent>
 }
 
 impl EventHandle {
-    fn new(receiver: UnboundedReceiver<ReceivePacket>) -> Self {
+    fn new(receiver: UnboundedReceiver<ShardEvent>) -> Self {
         EventHandle { inner: receiver }
     }
 }
 
 impl Stream for EventHandle {
-    type Item = ReceivePacket;
+    type Item = ShardEvent;
     type Error = ();
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         self.inner.poll()
     }
 }
-
 
 pub struct ShardManager {
     /// The token used by this manager to spawn shards.
@@ -89,8 +96,9 @@ pub struct ShardManager {
     pub total_shards: usize,
     /// A collection of shards that have been spawned.
     pub shards: Arc<RwLock<ShardMap>>,
+    event_sender: Option<UnboundedSender<ShardEvent>>,
     message_stream: Option<MessageStream>,
-    event_sender: Option<UnboundedSender<ReceivePacket>>
+    ws_uri: String
 }
 
 impl ShardManager {
@@ -115,7 +123,8 @@ impl ShardManager {
             total_shards,
             shards: Arc::new(RwLock::new(HashMap::new())),
             event_sender: None,
-            message_stream: None
+            message_stream: None,
+            ws_uri: gb.url
         })
     }
 
@@ -125,6 +134,7 @@ impl ShardManager {
         let (tx, rx) = unbounded();
         let shard_count = self.total_shards.clone();
         let token = self.token.clone();
+        let ws = self.ws_uri.clone();
         let shardmap = self.shards.clone();
         debug!("Attempting to spawn {} shards.", &shard_count);
 
@@ -133,8 +143,12 @@ impl ShardManager {
                 await!(Delay::new(Instant::now() + Duration::from_secs(6)))
                     .expect("Failed to delay shard spawn.");
                 let count = shard_count.clone();
-                let shard = Arc::new(
-                    Mutex::new(await!(Shard::new(token.clone(), [id, count])).expect("Failed to create shard"))
+                let shard = Arc::new(Mutex::new(
+                    await!(Shard::new(
+                        token.clone(),
+                        [id, count],
+                        ws.clone(),
+                    )).expect("Failed to create shard"))
                 );
                 shardmap.write().insert(id, shard.clone());
                 let sink = MessageSink {
@@ -166,7 +180,10 @@ impl ShardManager {
                 trace!("Websocket message received: {:?}", &message.clone());
                 let event = shard.resolve_packet(&message.clone()).expect("Failed to parse the shard message");
                 if let Opcodes::Dispatch = event.op {
-                    sender.unbounded_send(event.clone()).expect("Failed to send shard event to stream");
+                    sender.unbounded_send(ShardEvent {
+                        packet: event.clone(),
+                        shard: current_shard.clone(),
+                    }).expect("Failed to send shard event to stream");
                 };
                 let action = shard.fulfill_gateway(event.clone());
                 if let Ok(ShardAction::Autoreconnect) = action {
