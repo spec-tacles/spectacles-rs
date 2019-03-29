@@ -143,7 +143,7 @@ impl Shard {
                 }
                 if current_state == "handshake".to_string() {
                     let dur = Duration::from_millis(hello.heartbeat_interval);
-                    tokio::spawn_async(Shard::begin_interval(self.clone(), dur));
+                    tokio::spawn(Shard::begin_interval(self.clone(), dur));
                     return Ok(ShardAction::Identify);
                 }
                 Ok(ShardAction::Autoreconnect)
@@ -298,18 +298,19 @@ impl Shard {
     }
 
 
-    async fn begin_interval(mut shard: Shard, duration: Duration) {
+     fn begin_interval(mut shard: Shard, duration: Duration) -> impl Future<Item = (), Error = ()> {
         let info = shard.info.clone();
-        let mut stream = Interval::new(Instant::now(), duration)
+        Interval::new(Instant::now(), duration)
             .map_err(move |err| {
                 warn!("[Shard {}] Failed to begin heartbeat interval. {:?}", info[0], err);
-            });
-        if let Some(Ok(_)) = await!(stream.next()) {
-            if let Err(r) = shard.heartbeat() {
-                warn!("[Shard {}] Failed to perform heartbeat. {:?}", info[0], r);
-            }
-        };
-
+            })
+            .for_each(move |_| {
+                if let Err(r) = shard.heartbeat() {
+                    warn!("[Shard {}] Failed to perform heartbeat. {:?}", info[0], r);
+                    return Err(());
+                }
+                Ok(())
+            })
     }
 
     async fn begin_connection(ws: &str) -> Result<(UnboundedSender<WebsocketMessage>, ShardSplitStream)> {
