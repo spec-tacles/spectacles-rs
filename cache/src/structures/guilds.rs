@@ -56,7 +56,7 @@ impl<T: Backend> GuildStore<T> {
         };
         for presence in entity.presences.unwrap() {
             let presence_str = serde_json::to_string(&presence)?;
-            self.backend.set(format!("PRESENCES:{}", &entity.id), presence.user.id.0, presence_str)?;
+            self.backend.set("PRESENCES", presence.user.id.0, presence_str)?;
         }
 
         entity.channels = vec![];
@@ -160,7 +160,7 @@ impl<T: AsyncBackend> GuildStoreAsync<T> {
 
         for presence in entity.presences.unwrap() {
             let presence_str = serde_json::to_string(&presence).unwrap();
-            tokio::spawn(self.backend.set(format!("PRESENCES:{}", &entity.id), presence.user.id.0, presence_str)
+            tokio::spawn(self.backend.set("PRESENCES", presence.user.id.0, presence_str)
                 .map_err(|err| {
                     error!("Failed to insert presence into cache. {:?}", err);
                 })
