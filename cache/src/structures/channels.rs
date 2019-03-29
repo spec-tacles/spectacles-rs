@@ -44,6 +44,11 @@ impl<T: Backend> ChannelStore<T> {
     pub fn remove(&self, entity: Channel) -> Result<()> {
         self.backend.remove("CHANNELS", entity.id.0)
     }
+
+    /// Calculates the total amount of channels in the cache.
+    pub fn size(&self) -> Result<u64> {
+        self.backend.size("CHANNELS")
+    }
 }
 
 /// An non-blocking implementation of the Channel store, for use with async backends.
@@ -88,5 +93,10 @@ impl<T: AsyncBackend> ChannelStoreAsync<T> {
     /// Removes a channel from the cache.
     pub fn remove(&self, chan: Channel) -> impl Future<Item = (), Error = Error> {
         self.backend.remove("CHANNELS", chan.id.0)
+    }
+
+    /// Calculates the total amount of channels in the cache.
+    pub fn size(&self) -> impl Future<Item=u64, Error=Error> {
+        self.backend.size("CHANNELS")
     }
 }

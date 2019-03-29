@@ -45,6 +45,11 @@ impl<T: Backend> VoiceStateStore<T> {
     pub fn remove(&self, guild_id: impl Into<u64>, state: VoiceState) -> Result<()> {
         self.backend.remove(format!("VOICE_STATES:{}", guild_id.into()), state.user_id.0)
     }
+
+    /// Calculates the total amount of voice states for the provided guild in the cache.
+    pub fn size(&self, guild_id: impl Into<u64>) -> Result<u64> {
+        self.backend.size(format!("MEMBERS:{}", guild_id.into().to_string()))
+    }
 }
 
 /// An non-blocking implementation of the Voice States store, for use with async backends.
@@ -92,5 +97,10 @@ impl<T: AsyncBackend> VoiceStateStoreAsync<T> {
     /// Removes a voice state from the cache.
     pub fn remove(&self, guild_id: impl Into<u64>, state: VoiceState) -> impl Future<Item = (), Error = Error> {
         self.backend.remove(format!("VOICE_STATES:{}", guild_id.into()), state.user_id.0)
+    }
+
+    /// Calculates the total amount of voice states for the provided guild in the cache.
+    pub fn size(&self, guild_id: impl Into<u64>) -> impl Future<Item=u64, Error=Error> {
+        self.backend.size(format!("VOICE_STATES:{}", guild_id.into().to_string()))
     }
 }

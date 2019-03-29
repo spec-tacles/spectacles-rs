@@ -46,6 +46,13 @@ impl Backend for RedisBackend {
 
         Ok(())
     }
+
+    fn size(&self, coll: impl ToString) -> Result<u64> {
+        redis::cmd("HGET")
+            .arg(coll.to_string())
+            .query::<u64>(&*self.conn)
+            .map_err(Error::from)
+    }
 }
 
 impl RedisBackend {

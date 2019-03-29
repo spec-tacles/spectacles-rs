@@ -44,6 +44,11 @@ impl<T: Backend> EmojiStore<T> {
     pub fn remove(&self, emoji: Emoji) -> Result<()> {
         self.backend.remove("EMOJIS", emoji.id.expect("Invalid Emoji ID").0)
     }
+
+    /// Calculates the total amount of emojis in the cache.
+    pub fn size(&self) -> Result<u64> {
+        self.backend.size("EMOJIS")
+    }
 }
 
 /// A non-blocking implementation of the Emoji store, for use with async backends.
@@ -89,5 +94,10 @@ impl<T: AsyncBackend> EmojiStoreAsync<T> {
     /// Removes an emoji from the cache.
     pub fn remove(&self, emoji: Emoji) -> impl Future<Item = (), Error = Error> {
         self.backend.remove("EMOJIS", emoji.id.expect("Invalid Emoji ID provided").0)
+    }
+
+    /// Calculates the total amount of emojis in the cache.
+    pub fn size(&self) -> impl Future<Item=u64, Error=Error> {
+        self.backend.size("EMOJIS")
     }
 }

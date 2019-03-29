@@ -16,6 +16,7 @@ pub trait AsyncBackend {
            -> Box<Future<Item=(), Error=Error> + Send>;
     fn remove(&self, coll: impl ToString, key: impl ToString)
               -> Box<Future<Item=(), Error=Error> + Send>;
+    fn size(&self, coll: impl ToString) -> Box<Future<Item=u64, Error=Error> + Send>;
 }
 
 /// Trait for working with a synchronous storage backend.
@@ -24,4 +25,5 @@ pub trait Backend {
     fn get_all(&self, coll: impl ToString) -> Result<HashMap<String, String>>;
     fn set(&self, coll: impl ToString, key: impl ToString, value: impl ToString) -> Result<()>;
     fn remove(&self, coll: impl ToString, key: impl ToString) -> Result<()>;
+    fn size(&self, coll: impl ToString) -> Result<u64>;
 }

@@ -45,6 +45,11 @@ impl<T: Backend> PresenceStore<T> {
     pub fn remove(&self, pres: Presence) -> Result<()> {
         self.backend.remove("PRESENCES", pres.user.id.0)
     }
+
+    /// Calculates the total amount of presences in the cache.
+    pub fn size(&self) -> Result<u64> {
+        self.backend.size("PRESENCES")
+    }
 }
 
 /// An non-blocking implementation of the Presence store, for use with async backends.
@@ -91,5 +96,10 @@ impl<T: AsyncBackend> PresenceStoreAsync<T> {
     /// Removes a presence from the cache.
     pub fn remove(&self, pres: Presence) -> impl Future<Item = (), Error = Error> {
         self.backend.remove("PRESENCES", pres.user.id.0)
+    }
+
+    /// Calculates the total amount of presences in the cache.
+    pub fn size(&self) -> impl Future<Item=u64, Error=Error> {
+        self.backend.size("PRESENCES")
     }
 }

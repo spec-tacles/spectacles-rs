@@ -46,6 +46,11 @@ impl<T: Backend> MemberStore<T> {
     pub fn remove(&self, guild_id: impl Into<u64>, member: impl Into<u64>) -> Result<()> {
         self.backend.remove(format!("MEMBERS:{}", guild_id.into()), member.into().to_string())
     }
+
+    /// Calculates the total amount of guild members for the provided guild in the cache.
+    pub fn size(&self, guild_id: impl Into<u64>) -> Result<u64> {
+        self.backend.size(format!("MEMBERS:{}", guild_id.into().to_string()))
+    }
 }
 
 /// An non-blocking implementation of the Presence store, for use with async backends.
@@ -98,5 +103,10 @@ impl<T: AsyncBackend> MemberStoreAsync<T> {
     /// Removes a guild member from the cache.
     pub fn remove(&self, guild_id: impl Into<u64>, member: impl Into<u64>) -> impl Future<Item = (), Error = Error> {
         self.backend.remove(format!("MEMBERS:{}", guild_id.into().to_string()), member.into().to_string())
+    }
+
+    /// Calculates the total amount of guild members for the provided guild in the cache.
+    pub fn size(&self, guild_id: impl Into<u64>) -> impl Future<Item=u64, Error=Error> {
+        self.backend.size(format!("MEMBERS:{}", guild_id.into().to_string()))
     }
 }

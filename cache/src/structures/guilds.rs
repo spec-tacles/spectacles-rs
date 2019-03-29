@@ -75,6 +75,11 @@ impl<T: Backend> GuildStore<T> {
     pub fn remove(&self, entity: Guild) -> Result<()> {
         self.backend.remove("GUILDS", entity.id)
     }
+
+    /// Calculates the total amount of presences in the cache.
+    pub fn size(&self) -> Result<u64> {
+        self.backend.size("GUILDS")
+    }
 }
 
 
@@ -181,5 +186,10 @@ impl<T: AsyncBackend> GuildStoreAsync<T> {
     /// Removes a guild from the cache.
     pub fn remove(&self, entity: Guild) -> impl Future<Item=(), Error=Error> {
         self.backend.remove("GUILDS", entity.id)
+    }
+
+    /// Calculates the total amount of guilds in the cache.
+    pub fn size(&self) -> impl Future<Item=u64, Error=Error> {
+        self.backend.size("GUILDS")
     }
 }

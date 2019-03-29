@@ -44,6 +44,11 @@ impl<T: Backend> UserStore<T> {
     pub fn remove(&self, entity: User) -> Result<()> {
         self.backend.remove("USERS", entity.id.0)
     }
+
+    /// Calculates the total amount of users in the cache.
+    pub fn size(&self) -> Result<u64> {
+        self.backend.size("USERS")
+    }
 }
 
 /// An non-blocking implementation of the User store, for use with async backends.
@@ -88,5 +93,10 @@ impl<T: AsyncBackend> UserStoreAsync<T> {
     /// Removes a user from the cache.
     pub fn remove(&self, chan: User) -> impl Future<Item=(), Error=Error> {
         self.backend.remove("USERS", chan.id.0)
+    }
+
+    /// Calculates the total amount of users in the cache.
+    pub fn size(&self) -> impl Future<Item=u64, Error=Error> {
+        self.backend.size("USERS")
     }
 }

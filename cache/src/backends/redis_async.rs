@@ -61,6 +61,18 @@ impl AsyncBackend for RedisBackendAsync {
                 .from_err()
         )
     }
+
+    fn size(&self, coll: impl ToString) -> Box<Future<Item=u64, Error=Error> + Send> {
+        Box::new(
+            redis::cmd("HLEN")
+                .arg(coll.to_string())
+                .query_async(self.conn.clone())
+                .map(|res| {
+                    let count: u64 = res.1;
+                    count
+                }).from_err()
+        )
+    }
 }
 
 impl RedisBackendAsync {

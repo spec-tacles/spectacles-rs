@@ -46,6 +46,11 @@ impl<T: Backend> RoleStore<T> {
     pub fn remove(&self, guild_id: impl Into<u64>, role: Role) -> Result<()> {
         self.backend.remove(format!("ROLES:{}", guild_id.into()), role.id.0)
     }
+
+    /// Calculates the total amount of roles for the provided guild in the cache.
+    pub fn size(&self, guild_id: impl Into<u64>) -> Result<u64> {
+        self.backend.size(format!("ROLES:{}", guild_id.into()))
+    }
 }
 
 /// An non-blocking implementation of the Role store, for use with async backends.
@@ -95,6 +100,10 @@ impl<T: AsyncBackend> RoleStoreAsync<T> {
     /// Removes a role from the cache.
     pub fn remove(&self, guild_id: impl Into<u64>, role: impl Into<u64>) -> impl Future<Item = (), Error = Error> {
         self.backend.remove(format!("ROLES:{}", guild_id.into()), role.into().to_string())
-        
+    }
+
+    /// Calculates the total amount of roles for the provided guild in the cache.
+    pub fn size(&self, guild_id: impl Into<u64>) -> impl Future<Item=u64, Error=Error> {
+        self.backend.size(format!("ROLES:{}", guild_id.into()))
     }
 }
