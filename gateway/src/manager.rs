@@ -40,7 +40,9 @@ pub enum ShardStrategy {
 #[derive(Clone)]
 /// Information about a Discord Gateway event received for a shard.
 pub struct ShardEvent {
+    /// The shard which emitted this event.
     pub shard: ManagerShard,
+    /// The Discord Gateway packet that the event contains.
     pub packet: ReceivePacket,
 }
 /// A collection of shards, keyed by shard ID.

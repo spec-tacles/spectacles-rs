@@ -46,7 +46,7 @@ use spectacles_model::{
 };
 
 use crate::{
-    constants::{GATEWAY_URL, GATEWAY_VERSION},
+    constants::GATEWAY_VERSION,
     errors::{Error, Result}
 };
 
@@ -69,10 +69,12 @@ pub struct Shard {
     pub sender: Arc<Mutex<UnboundedSender<WebsocketMessage>>>,
     /// The shard's message stream, which is used to receive messages.
     pub stream: Arc<Mutex<Option<ShardSplitStream>>>,
-    /// Used to determine whether or not the shard is currently in a state of connecting.
-    current_state: Arc<Mutex<String>>,
     /// This shard's current heartbeat.
     pub heartbeat: Arc<Mutex<Heartbeat>>,
+    /// Used to determine whether or not the shard is currently in a state of connecting.
+    current_state: Arc<Mutex<String>>,
+    /// The URL of the Discord Gateway.
+    ws_uri: String
 }
 
 /// Various actions that a shard can perform.
@@ -101,8 +103,8 @@ impl Heartbeat {
 
 impl Shard {
     /// Creates a new Discord Shard, with the provided token.
-    pub async fn new(token: String, info: [usize; 2]) -> Result<Shard> {
-        let (sender, stream) = await!(Shard::begin_connection(GATEWAY_URL))?;
+    pub async fn new(token: String, info: [usize; 2], ws_uri: String) -> Result<Shard> {
+        let (sender, stream) = await!(Shard::begin_connection(&ws_uri))?;
         Ok(Shard {
             token,
             session_id: None,
@@ -116,6 +118,7 @@ impl Shard {
             current_state: Arc::new(Mutex::new(String::from("handshake"))),
             stream: Arc::new(Mutex::new(Some(stream))),
             heartbeat: Arc::new(Mutex::new(Heartbeat::new())),
+            ws_uri
         })
 
     }
@@ -143,7 +146,7 @@ impl Shard {
                 }
                 if current_state == "handshake".to_string() {
                     let dur = Duration::from_millis(hello.heartbeat_interval);
-                    tokio::spawn(Shard::begin_interval(self.clone(), dur));
+                    tokio::spawn_async(Shard::begin_interval(self.clone(), dur));
                     return Ok(ShardAction::Identify);
                 }
                 Ok(ShardAction::Autoreconnect)
@@ -288,7 +291,7 @@ impl Shard {
         let orig_stream = self.stream.clone();
         let heartbeat = self.heartbeat.clone();
 
-        let (sender, stream) = await!(Shard::begin_connection(GATEWAY_URL))?;
+        let (sender, stream) = await!(Shard::begin_connection(&self.ws_uri))?;
         *orig_sender.lock() = sender;
         *heartbeat.lock() = Heartbeat::new();
         *state.lock() = String::from("handshake");
@@ -297,20 +300,17 @@ impl Shard {
         Ok(())
     }
 
-
-     fn begin_interval(mut shard: Shard, duration: Duration) -> impl Future<Item = (), Error = ()> {
+    async fn begin_interval(mut shard: Shard, duration: Duration) {
         let info = shard.info.clone();
-        Interval::new(Instant::now(), duration)
+        let mut stream = Interval::new(Instant::now(), duration)
             .map_err(move |err| {
                 warn!("[Shard {}] Failed to begin heartbeat interval. {:?}", info[0], err);
-            })
-            .for_each(move |_| {
-                if let Err(r) = shard.heartbeat() {
-                    warn!("[Shard {}] Failed to perform heartbeat. {:?}", info[0], r);
-                    return Err(());
-                }
-                Ok(())
-            })
+            });
+        while let Some(Ok(_)) = await!(stream.next()) {
+            if let Err(r) = shard.heartbeat() {
+                warn!("[Shard {}] Failed to perform heartbeat. {:?}", info[0], r);
+            }
+        };
     }
 
     async fn begin_connection(ws: &str) -> Result<(UnboundedSender<WebsocketMessage>, ShardSplitStream)> {

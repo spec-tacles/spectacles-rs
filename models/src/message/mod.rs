@@ -31,12 +31,6 @@ impl MessageResponse for String {
     }
 }
 
-impl MessageResponse for Embed {
-    fn to_message(self) -> CreateMessage {
-        CreateMessage::default().with_embed(self)
-    }
-}
-
 impl MessageResponse for EditMessage {
     fn to_message(self) -> CreateMessage {
         let m = CreateMessage::default();

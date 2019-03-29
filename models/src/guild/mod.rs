@@ -193,9 +193,9 @@ pub struct GuildRoleUpdate {
 #[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleDelete {
     /// The guild ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// The ID of the deleted role.
-    pub role: String
+    pub role: Snowflake
 }
 
 /// A guild's explicit content filter levels.

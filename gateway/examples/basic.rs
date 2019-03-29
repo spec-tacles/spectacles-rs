@@ -33,7 +33,7 @@ fn main() {
         // As we did above, we poll our shard event stream in a new thread.
         tokio::spawn_async(async move {
             while let Some(Ok(event)) = await!(events.next()) {
-                if let Some(evt) = event.t {
+                if let Some(evt) = event.packet.t {
                     println!("Received event: {:?}", evt);
                 }
             };
