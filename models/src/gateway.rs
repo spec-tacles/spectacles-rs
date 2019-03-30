@@ -74,8 +74,7 @@ pub struct GatewayBrokerMessage {
 
 impl GatewayBrokerMessage {
     /// Creates a new gateway broker message.
-    #[allow(dead_code)]
-    fn new<T: SendablePacket>(guild_id: Snowflake, packet: T) -> Result<Self, JsonError> {
+    pub fn new<T: SendablePacket>(guild_id: Snowflake, packet: T) -> Result<Self, JsonError> {
         let raw = RawValue::from_string(packet.to_json()?)?;
 
         Ok(Self {
@@ -84,8 +83,7 @@ impl GatewayBrokerMessage {
         })
     }
     /// Converts the message to a byte vector, suitable for publishing to most message brokers.
-    #[allow(dead_code)]
-    fn as_bytes(&self) -> Result<Vec<u8>, JsonError> {
+    pub fn as_bytes(&self) -> Result<Vec<u8>, JsonError> {
         let json = serde_json::to_string(self)?;
 
         Ok(json.as_bytes().to_vec())
