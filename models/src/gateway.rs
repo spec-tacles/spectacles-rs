@@ -6,7 +6,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
     guild::UnavailableGuild,
-    presence::{Activity, ClientPresence},
+    presence::{Activity, ClientActivity, ClientPresence},
     Snowflake,
     User
 };
@@ -143,13 +143,13 @@ pub struct UpdateVoiceState {
     self_deaf: bool
 }
 
-/// A packet sent to indicate a status update.
+/// A packet sent to change the current status of the connected client.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateStatus {
     /// Milliseconds since the client went idle.
     since: Option<i32>,
     /// The activity object to set.
-    game: Option<Activity>,
+    game: Option<ClientActivity>,
     /// The status object to set.
     status: String,
     /// Whether or not the client is AFK.
