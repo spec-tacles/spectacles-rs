@@ -34,7 +34,7 @@ fn main() {
         tokio::spawn_async(async move {
             while let Some(Ok(event)) = await!(events.next()) {
                 if let Some(evt) = event.packet.t {
-                    println!("Received event: {:?}", evt);
+                    println!("Received event from Shard {:?}: {:?}", event.shard.lock().info, evt);
                 }
             };
         });

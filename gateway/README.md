@@ -2,7 +2,7 @@
 A rich Spectacles Gateway client for Rust.
 
 ## About
-This crate allows you to interact with the Discord gateway. Pllease refer to the [Discord Gateway Docs](https://discordapp.com/developers/docs/topics/gateway) for more background on how to use this crate.
+This crate allows you to interact with the Discord gateway. Please refer to the [Discord Gateway Docs](https://discordapp.com/developers/docs/topics/gateway) for more background information on how to use this crate.
 ## Features
 - Asynchronous websocket message handling.
 - Zero-Downtime shard spawning.
@@ -11,33 +11,34 @@ This crate allows you to interact with the Discord gateway. Pllease refer to the
 
 ## Example
 ```rust,norun
+#![feature(futures_api, async_await, await_macro)]
+#[macro_use] extern crate tokio;
 #[macro_use] extern crate log;
+use tokio::prelude::*;
 use std::env::var;
-use spectacles_gateway::{ShardManager, ShardStrategy, ManagerOptions, EventHandler, Shard};
-use spectacles_model::gateway::ReceivePacket;
-use futures::future::Future;
+use spectacles_gateway::{ShardManager, ShardStrategy};
+
 
 fn main() {
     env_logger::init();
     let token = var("DISCORD_TOKEN").expect("No Discord Token was provided.");
-    // tokio.run() boostraps our Tokio application.
-    tokio::run({
-        // calling new() here return a new instance of the shard manager.
-        ShardManager::new(token, ManagerOptions {
-            strategy: ShardStrategy::Recommended,
-            handler: Handler
-        })
-        .and_then(|mut manager| manager.spawn()) // Begins spawning of shards.
-        .map_err(|err| error!("An error occured while processing shards: {:?}", err))
-    });
+    tokio::run_async(async {
+        let mut manager = await!(ShardManager::new(token, ShardStrategy::Recommended))
+            .expect("Failed to create shard manager");
+        let (mut spawner, mut events) = manager.begin_spawn();
+        tokio::spawn_async(async move {
+            while let Some(Ok(shard)) = await!(spawner.next()) {
+                println!("Shard {:?} spawned.", shard.lock().info);
+            };
+        });
+        tokio::spawn_async(async move {
+            while let Some(Ok(event)) = await!(events.next()) {
+                if let Some(evt) = event.packet.t {
+                    println!("Received event from Shard {:?}: {:?}", event.shard.lock().info, evt);
+                }
+            };
+        });
+    })
 }
-/// Here we define our Handler struct, which we implement the Eventhandler trait for.
-/// The on_packet() trait method will be called when a packet is received from the Discord gateway.
-struct Handler;
-impl EventHandler for Handler {
-     fn on_packet(&self, shard: &mut Shard, pkt: ReceivePacket) {
-         println!("Received Gateway Packet from Shard {:?} - {:?}", shard.info, pkt);
-         // Do other things with message, such as sending it to a message broker.
-     }
- }
+
 ```

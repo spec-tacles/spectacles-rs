@@ -71,7 +71,7 @@ impl Stream for Spawner {
     }
 }
 
-/// A stream of shard events.
+/// A stream of incoming Discord events for a shard.
 pub struct EventHandle {
     inner: UnboundedReceiver<ShardEvent>
 }
@@ -91,6 +91,7 @@ impl Stream for EventHandle {
     }
 }
 
+/// The central hub for all shards, where shards are spawned and maintained.
 pub struct ShardManager {
     /// The token used by this manager to spawn shards.
     pub token: String,
@@ -104,6 +105,7 @@ pub struct ShardManager {
 }
 
 impl ShardManager {
+    /// Creates a new shard manager, with the provided Discord token and strategy.
     pub async fn new(token: String, strategy: ShardStrategy) -> Result<ShardManager> {
         let token = if token.starts_with("Bot ") {
             token
@@ -130,6 +132,7 @@ impl ShardManager {
         })
     }
 
+    /// Begins to spawn shards. Returns a tuple which contains a stream of shards spawned and a stream of incoming shard events.
     pub fn begin_spawn(&mut self) -> (Spawner, EventHandle) {
         let (sender, receiver) = unbounded();
         self.message_stream = Some(receiver);
