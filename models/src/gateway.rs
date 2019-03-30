@@ -6,7 +6,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
     guild::UnavailableGuild,
-    presence::{Activity, ClientActivity, ClientPresence},
+    presence::{ClientActivity, ClientPresence},
     Snowflake,
     User
 };
