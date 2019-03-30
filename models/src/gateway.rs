@@ -1,7 +1,10 @@
 //! Structs representing the various elements of the Discord gateway.
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use serde_json::Error as JsonError;
+use serde_json::{
+    Error as JsonError,
+    value::RawValue,
+};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
@@ -45,19 +48,48 @@ pub struct ReceivePacket {
     /// The opcode for this payload.
     pub op: Opcodes,
     /// The JSON value for this payload.
-    pub d: Box<serde_json::value::RawValue>,
+    pub d: Box<RawValue>,
     pub s: Option<u64>,
     /// The name of the event that was fired, if applicable.
     pub t: Option<GatewayEvent>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-/// A JSON packet that the client would send over the Discord Gateway.
+/// A JSON packet that the client would send to the Discord Gateway.
 pub struct SendPacket<T: SendablePacket> {
     /// The opcode for this packet.
     pub op: Opcodes,
     /// The JSON data for this packet.
     pub d: T
+}
+
+/// A message, sent to a message broker, which contains the packet to be sent to the Discord gateway.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GatewayBrokerMessage {
+    /// The guild ID of which to calculate the shard ID from.
+    pub guild_id: Snowflake,
+    /// The packet, as a raw JSON value.
+    pub packet: Box<RawValue>,
+}
+
+impl GatewayBrokerMessage {
+    /// Creates a new gateway broker message.
+    #[allow(dead_code)]
+    fn new<T: SendablePacket>(guild_id: Snowflake, packet: T) -> Result<Self, JsonError> {
+        let raw = RawValue::from_string(packet.to_json()?)?;
+
+        Ok(Self {
+            guild_id,
+            packet: raw,
+        })
+    }
+    /// Converts the message to a byte vector, suitable for publishing to most message brokers.
+    #[allow(dead_code)]
+    fn as_bytes(&self) -> Result<Vec<u8>, JsonError> {
+        let json = serde_json::to_string(self)?;
+
+        Ok(json.as_bytes().to_vec())
+    }
 }
 
 /// Used for identifying a shard with the gateway.
