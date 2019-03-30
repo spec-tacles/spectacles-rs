@@ -35,5 +35,5 @@ pub struct GuildRoleDelete {
     /// The guild ID of the guild.
     pub guild_id: Snowflake,
     /// The role ID of the role that was deleted.
-    pub role: Snowflake
+    pub role_id: Snowflake
 }
