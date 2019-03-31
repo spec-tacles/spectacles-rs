@@ -25,6 +25,12 @@ impl MessageResponse for &str {
     }
 }
 
+impl MessageResponse for &String {
+    fn to_message(self) -> CreateMessage {
+        CreateMessage::default().with_content(self.clone())
+    }
+}
+
 impl MessageResponse for String {
     fn to_message(self) -> CreateMessage {
         CreateMessage::default().with_content(self)
