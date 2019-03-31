@@ -1,3 +1,7 @@
+#![feature(futures_api, async_await, await_macro)]
+
+#[warn(rust_2018_idioms)]
+
 use http::header::HeaderValue;
 use reqwest::header::HeaderMap;
 use reqwest::r#async::ClientBuilder;
@@ -22,8 +26,7 @@ pub struct RestClient {
     /// Whether or not the default ratelimit bucket will be used for all requests.
     /// If this is set to false, it is the user's responsibility to ensure that all requests to the Discord API are properly ratelimited.
     pub using_ratelimiter: bool,
-    /// The route manager for the client.
-    pub router: RouteManager
+    router: RouteManager
 }
 
 impl RestClient {
@@ -37,14 +40,16 @@ impl RestClient {
         let mut headers = HeaderMap::new();
         let value = HeaderValue::from_str(token.as_str()).unwrap();
         headers.insert("Authorization", value);
+
         let client = ClientBuilder::new().default_headers(headers).build()
             .expect("Failed to build HTTP client");
+        let router = RouteManager(client);
 
         RestClient {
             token,
             base_url: constants::BASE_URL.to_string(),
             using_ratelimiter,
-            router: RouteManager { http: client }
+            router
         }
     }
 
@@ -55,7 +60,7 @@ impl RestClient {
         self
     }
 
-    pub fn channel(&self, id: impl Into<u64>) -> ChannelsView {
-        ChannelsView { id: id.into(), router: self.router.clone() }
+    pub fn channel(&self, id: impl Into<u64>) -> ChannelView {
+        ChannelView::new(id.into(), self.router.clone())
     }
 }

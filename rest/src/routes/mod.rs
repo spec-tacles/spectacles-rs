@@ -20,57 +20,59 @@ mod invite;
 mod user;
 mod webhook;
 
-/// Handles the routing of requests to the Discord API.
-#[derive(Clone, Debug)]
-pub struct RouteManager {
-    pub http: ReqwestClient,
+pub trait View {
+    fn route_str(&self) -> String;
 }
 
+/// Handles the routing of requests to the Discord API.
+#[derive(Clone, Debug)]
+pub struct RouteManager(pub ReqwestClient);
+
 impl RouteManager {
-    fn get<T>(&self, route: String) -> impl Future<Item=T, Error=Error>
+    pub fn get<T>(&self, route: String) -> impl Future<Item=T, Error=Error>
         where T: DeserializeOwned + Send + 'static
     {
         let url = format!("{}{}", BASE_URL, route);
-        self.http.get(url.as_str()).send()
+        self.0.get(url.as_str()).send()
             .and_then(|mut res| res.json::<T>())
             .map_err(Error::from)
     }
 
-    fn post<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
+    pub fn post<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
         where S: Serialize + Send,
         T: DeserializeOwned + Send + 'static,
     {
         let url = format!("{}{}", BASE_URL, route);
-        self.http.post(url.as_str()).json(&body).send()
+        self.0.post(url.as_str()).json(&body).send()
             .and_then(|mut res| res.json::<T>())
             .map_err(Error::from)
     }
 
-    fn patch<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
+    pub fn patch<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
         where S: Serialize + Send,
         T: DeserializeOwned + Send + 'static,
     {
         let url = format!("{}{}", BASE_URL, route);
-        self.http.patch(url.as_str()).json(&body).send()
+        self.0.patch(url.as_str()).json(&body).send()
             .and_then(|mut res| res.json::<T>())
             .map_err(Error::from)
     }
 
-    fn put<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
+    pub fn put<S, T>(&self, route: String, body: S) -> impl Future<Item=T, Error=Error>
         where S: Serialize + Send,
         T: DeserializeOwned + Send + 'static,
     {
         let url = format!("{}{}", BASE_URL, route);
-        self.http.put(url.as_str()).json(&body).send()
+        self.0.put(url.as_str()).json(&body).send()
             .and_then(|mut res| res.json::<T>())
             .map_err(Error::from)
     }
 
-    fn delete<T>(&self, route: String) -> impl Future<Item=T, Error=Error>
+    pub fn delete<T>(&self, route: String) -> impl Future<Item=T, Error=Error>
         where T: DeserializeOwned + Send + 'static,
     {
         let url = format!("{}{}", BASE_URL, route);
-        self.http.delete(url.as_str()).send()
+        self.0.delete(url.as_str()).send()
             .and_then(|mut res| res.json::<T>())
             .map_err(Error::from)
     }
