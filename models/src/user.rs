@@ -22,6 +22,25 @@ pub struct User {
     pub email: Option<String>
 }
 
+impl User {
+    pub fn get_avatar_url(&self, format: &str) -> String {
+        if let Some(h) = &self.avatar {
+            format!("https://cdn.discordapp.com/avatars/{}/{}.{}", self.id.0, h, format)
+        } else {
+            let avatars = vec![
+                "6debd47ed13483642cf09e832ed0bc1b",
+                "322c936a8c8be1b803cd94861bdfa868",
+                "dd4dbc0016779df1378e7812eabaa04d",
+                "0e291f67c9274a1abdddeb3fd919cbaa",
+                "1cbd08c76f8af6dddce02c5138971129",
+            ];
+            let hash = avatars[self.discriminator.parse::<usize>().unwrap() % avatars.len()];
+
+            format!("https://cdn.discordapp.com/avatars/{}/{}.{}", self.id.0, hash, format)
+        }
+    }
+}
+
 impl ToString for User {
     fn to_string(&self) -> String {
         format!("<@{}>", self.id.0)
