@@ -150,7 +150,7 @@ impl AmqpBroker {
     /// [`AmqpBroker`]: struct.AmqpBroker.html
     ///
     pub fn subscribe<C, F>(self, evt: &str, cb: C) -> Self
-        where C: Fn(String) -> F + Send + 'static,
+        where C: FnOnce(String) -> F + Send + 'static,
               F: Future<Output=()> + Send + 'static
     {
         let queue_name = match &self.subgroup {
