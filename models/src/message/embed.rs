@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::{DateTime, Utc};
 
 /// Represents a Message Embed being sent.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
