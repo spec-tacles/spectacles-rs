@@ -169,5 +169,7 @@ pub enum ChannelType {
     DM,
     Voice,
     GroupDM,
-    Category
+    Category,
+    News,
+    Store
 }
