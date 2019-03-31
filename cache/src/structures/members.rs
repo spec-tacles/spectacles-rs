@@ -36,7 +36,8 @@ impl<T: Backend> MemberStore<T> {
     }
 
     /// Adds a guild member to the cache.
-    pub fn add(&self, guild_id: impl Into<u64>, member: GuildMember) -> Result<()> {
+    pub fn add(&self, guild_id: impl Into<u64>, mut member: GuildMember) -> Result<()> {
+        member.user = None;
         let json = serde_json::to_string(&member)?;
         
         self.backend.set(format!("MEMBERS:{}", guild_id.into()), member.user.expect("No User found for this member.").id.0, json)

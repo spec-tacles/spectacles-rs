@@ -119,7 +119,7 @@ impl<T: AsyncBackend> GuildStoreAsync<T> {
 
     /// Adds a guild to the cache.
     pub fn add(&self, mut entity: Guild) -> impl Future<Item=(), Error=Error> {
-        for member in entity.members {
+        for mut member in entity.members {
             let user = member.clone().user.unwrap();
             let user_str = serde_json::to_string(&user).unwrap();
             tokio::spawn(self.backend.set("USERS", &user.id, user_str)
@@ -127,6 +127,7 @@ impl<T: AsyncBackend> GuildStoreAsync<T> {
                     error!("Failed to inser guild member into cache. {:?}", err);
                 })
             );
+            member.user = None;
             let member_str = serde_json::to_string(&member).unwrap();
             tokio::spawn(self.backend.set(format!("MEMBERS:{}", &entity.id), &user.id, member_str)
                 .map_err(|err| {
