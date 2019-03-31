@@ -219,7 +219,8 @@ impl SendablePacket for ClientPresence {
 pub enum ActivityType {
     Game,
     Streaming,
-    Listening
+    Listening,
+    Watching
 }
 
 impl Default for ActivityType {
