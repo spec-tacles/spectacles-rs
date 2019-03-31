@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::sync::Arc;
 
 // use futures_backoff::Strategy;
@@ -21,6 +22,12 @@ use crate::errors::BrokerResult;
 
 /// A shortcut for the AMQP basic properties.
 pub type AmqpProperties = BasicProperties;
+
+pub trait Payload {
+    type Fut: Future<Output=()> + Send + 'static;
+
+    fn exec(&self, data: &str) -> Self::Fut;
+}
 
 #[derive(Clone)]
 struct PubState {
@@ -142,8 +149,9 @@ impl AmqpBroker {
     ///
     /// [`AmqpBroker`]: struct.AmqpBroker.html
     ///
-    pub fn subscribe<C>(self, evt: &str, mut cb: C) -> Self
-        where C: FnMut(&str) + Send + Sync + 'static
+    pub fn subscribe<C, F>(self, evt: &str, mut cb: C) -> Self
+        where C: FnMut(String) -> F + Send + 'static,
+              F: Future<Output=()> + Send + 'static
     {
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
@@ -174,11 +182,14 @@ impl AmqpBroker {
                 .expect("Failed to create consumer");
 
             while let Some(Ok(mess)) = tokio::await!(consumer.next()) {
-                if let Err(e) = tokio::await!(channel.basic_ack(mess.delivery_tag, false)) {
-                    error!("Failed to acknowledge message: {}", e);
-                };
-                let payload = std::str::from_utf8(&mess.data).expect("Invalid UTF8 payload sent");
-                cb(payload);
+                match tokio::await!(channel.basic_ack(mess.delivery_tag, false)) {
+                    Ok(_) => {
+                        let payload = String::from_utf8(mess.data).unwrap();
+                        await!(cb(payload));
+                        debug!("Message acknowledged.")
+                    },
+                    Err(e) => error!("Failed to acknowledge broker message. {:?}", e)
+                }
             };
         });
 

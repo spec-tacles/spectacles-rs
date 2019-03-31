@@ -18,8 +18,11 @@ fn main() {
             .expect("Failed to connect to broker");
         println!("I'm now listening for messages!");
         // Here we attach a callback to the subscribe() method that will be called when we receive a payload for our event name.
-        broker.subscribe("HELLO", |payload| {
-            println!("Message received: {}", payload);
-        });
+        broker.subscribe("HELLO", recv_payload);
     });
+}
+
+
+async fn recv_payload(payload: String) {
+    println!("Received payload: {}", payload);
 }
