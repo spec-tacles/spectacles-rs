@@ -149,8 +149,9 @@ impl AmqpBroker {
     ///
     /// [`AmqpBroker`]: struct.AmqpBroker.html
     ///
-    pub fn subscribe<C>(self, evt: &str, cb: C) -> Self
-        where C: Fn(String) + Send + 'static,
+    pub fn subscribe<C, F>(self, evt: &str, cb: C) -> Self
+        where C: Fn(String) -> F + Send + 'static,
+              F: Future<Output=()> + Send + 'static
     {
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
@@ -184,7 +185,7 @@ impl AmqpBroker {
                 match tokio::await!(channel.basic_ack(mess.delivery_tag, false)) {
                     Ok(_) => {
                         let payload = String::from_utf8(mess.data).unwrap();
-                        cb(payload);
+                        await!(cb(payload));
                         debug!("Message acknowledged.")
                     },
                     Err(e) => error!("Failed to acknowledge broker message. {:?}", e)
