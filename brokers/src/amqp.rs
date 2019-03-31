@@ -149,7 +149,7 @@ impl AmqpBroker {
     ///
     /// [`AmqpBroker`]: struct.AmqpBroker.html
     ///
-    pub fn subscribe<C, F>(self, evt: &str, cb: C) -> Self
+    pub fn subscribe<C>(self, evt: &str, cb: C) -> Self
         where C: Fn(String) + Send + 'static,
     {
         let queue_name = match &self.subgroup {
