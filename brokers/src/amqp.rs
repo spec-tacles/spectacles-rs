@@ -149,7 +149,7 @@ impl AmqpBroker {
     ///
     /// [`AmqpBroker`]: struct.AmqpBroker.html
     ///
-    pub fn subscribe<C, F>(self, evt: &str, cb: C) -> Self
+    pub fn subscribe<C, F>(&self, evt: &str, cb: C) -> &AmqpBroker
         where C: Fn(String) -> F + Send + 'static,
               F: Future<Output=()> + Send + 'static
     {
