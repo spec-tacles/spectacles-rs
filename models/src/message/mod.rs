@@ -16,34 +16,34 @@ mod emoji;
 
 /// Represents different types that can be sent to the Discord API.
 pub trait MessageResponse {
-    fn to_message(self) -> CreateMessage;
+    fn as_message(self) -> CreateMessage;
 }
 
 impl MessageResponse for &str {
-    fn to_message(self) -> CreateMessage {
+    fn as_message(self) -> CreateMessage {
         CreateMessage::default().with_content(self)
     }
 }
 
 impl MessageResponse for &String {
-    fn to_message(self) -> CreateMessage {
+    fn as_message(self) -> CreateMessage {
         CreateMessage::default().with_content(self.clone())
     }
 }
 
 impl MessageResponse for String {
-    fn to_message(self) -> CreateMessage {
+    fn as_message(self) -> CreateMessage {
         CreateMessage::default().with_content(self)
     }
 }
 
 impl MessageResponse for Embed {
-    fn to_message(self) -> CreateMessage {
+    fn as_message(self) -> CreateMessage {
         CreateMessage::default().with_embed(self)
     }
 }
 impl MessageResponse for EditMessage {
-    fn to_message(self) -> CreateMessage {
+    fn as_message(self) -> CreateMessage {
         let m = CreateMessage::default();
         let m = m.clone().with_content(self.content.unwrap_or_default());
 
@@ -64,14 +64,14 @@ pub struct Message {
     pub channel_id: Snowflake,
     /// The ID of the guild that the message was sent in.
     #[serde(default)]
-    pub guild_id: Snowflake,
+    pub guild_id: Option<Snowflake>,
     /// The author of the message.
     pub author: User,
     /// The contents of this message.
     pub content: String,
     /// The guild member form of the message author.
     #[serde(default)]
-    pub member: GuildMember,
+    pub member: Option<GuildMember>,
     /// The time that this message was sent.
     pub timestamp: DateTime<FixedOffset>,
     /// When this message was edited, if applicable.

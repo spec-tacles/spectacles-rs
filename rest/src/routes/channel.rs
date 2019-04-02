@@ -33,7 +33,7 @@ impl ChannelView {
     /// Creates a message in the current channel.
     pub fn create_message(&self, payload: impl MessageResponse) -> impl Future<Item=Message, Error=Error> {
         let route = format!("/channels/{}/messages", self.id);
-        self.router.post::<CreateMessage, Message>(route, payload.to_message())
+        self.router.post::<CreateMessage, Message>(route, payload.as_message())
     }
 
     /// Creates an invite for the current channel.
@@ -55,7 +55,7 @@ impl ChannelView {
     /// Edits the message in this channel, with the given message ID.
     pub fn edit_message(&self, mid: impl Into<u64>, payload: impl MessageResponse) -> impl Future<Item=Message, Error=Error> {
         let route = format!("/channels/{}/messages/{}", self.id, mid.into());
-        self.router.patch::<CreateMessage, Message>(route, payload.to_message())
+        self.router.patch::<CreateMessage, Message>(route, payload.as_message())
     }
 
     /// Modifies this channel.
