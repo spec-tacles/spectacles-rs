@@ -1,7 +1,9 @@
 use std::future::Future;
 use std::sync::Arc;
+use std::time::Duration;
 
-// use futures_backoff::Strategy;
+use futures::sync::mpsc::{unbounded, UnboundedReceiver};
+use futures_backoff::Strategy;
 use lapin_futures_native_tls::{AMQPConnectionNativeTlsExt, AMQPStream};
 use lapin_futures_native_tls::lapin::{
     channel::{
@@ -23,12 +25,6 @@ use crate::errors::BrokerResult;
 /// A shortcut for the AMQP basic properties.
 pub type AmqpProperties = BasicProperties;
 
-pub trait Payload {
-    type Fut: Future<Output=()> + Send + 'static;
-
-    fn exec(&self, data: &str) -> Self::Fut;
-}
-
 #[derive(Clone)]
 struct PubState {
     connection: LapinClient<AMQPStream>,
@@ -40,6 +36,27 @@ struct PubState {
 struct ConsumerState {
     connection: LapinClient<AMQPStream>,
     heartbeat: Arc<HeartbeatHandle>,
+}
+
+/// A stream of messages that are being consumed in the message queue.
+pub struct AmqpConsumer {
+    recv: UnboundedReceiver<String>
+}
+
+impl AmqpConsumer {
+    fn new(recv: UnboundedReceiver<String>) -> Self {
+        Self {
+            recv
+        }
+    }
+}
+
+impl Stream for AmqpConsumer {
+    type Item = String;
+    type Error = ();
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        self.recv.poll()
+    }
 }
 
 /// Central AMQP message brokers client. The preferred AMQP server is RabbitMQ, although the broker will work with AMQP-compliant server.
@@ -56,13 +73,15 @@ pub struct AmqpBroker {
 impl AmqpBroker {
     /// Creates a new AMQP-based message broker, with the provided address, and groups.
     pub async fn new(uri: &str, group: String, subgroup: Option<String>) -> BrokerResult<AmqpBroker> {
-        let (publish, phb) = tokio::await!(uri.connect_cancellable(|err| {
+        let strategy = Strategy::fibonacci(Duration::from_secs(2))
+            .with_max_retries(10);
+        let (publish, phb) = tokio::await!(strategy.retry(|| uri.connect_cancellable(|err| {
             eprintln!("Error encountered while attempting heartbeat. {}", err);
-        }))?;
+        })))?;
+        let (consume, chb) = tokio::await!(strategy.retry(|| uri.connect_cancellable(|err| {
+            eprintln!("Error encountered while attempting heartbeat. {}", err);
+        })))?;
         let pub_channel = tokio::await!(publish.create_channel())?;
-        let (consume, chb) = tokio::await!(uri.connect_cancellable(|err| {
-            eprintln!("Error encountered while attempting heartbeat. {}", err);
-        }))?;
 
         Ok(Self {
             consume_state: ConsumerState {
@@ -123,8 +142,8 @@ impl AmqpBroker {
         Ok(())
     }
 
-    /// Subscribes to the provided event, with a callback that is called when an event is received.
-    /// Returns an owned [`AmqpBroker`] instance, which you can use to subscribe to additional events.
+    /// Consumes all messages in the provided queue name.
+    /// Returns [`AmqpConsumer`] stream of incoming messages.
     /// # Example
     /// ```rust,norun
     /// #![feature(futures_api, async_await, await_macro)]
@@ -138,21 +157,21 @@ impl AmqpBroker {
     ///         let addr = var("AMQP_URL").expect("No AMQP server address found");
     ///         let broker = await!(AmqpBroker::new(&addr, "MYGROUP".to_string(), None))
     ///             .expect("Failed to connect to broker");
-    ///         let json = b"{'message': 'Example Publish.'}";
+    ///         let mut consumer = await!(broker.consume("YOURQUEUE"));
     ///
-    ///         broker.subscribe("MYQUEUE", |payload| {
-    ///             println!("Message received: {}", payload);
+    ///         tokio::spawn_async(async move {
+    ///             while let Some(Ok(message)) = await!(consumer.next()) {
+    ///                 println!("Message received: {}", message);
+    ///             }
     ///         });
     ///     }
     /// }
     /// ```
     ///
-    /// [`AmqpBroker`]: struct.AmqpBroker.html
+    /// [`AmqpConsumer`]: struct.AmqpConsumer.html
     ///
-    pub fn subscribe<C, F>(&self, evt: &str, cb: C) -> &AmqpBroker
-        where C: Fn(String) -> F + Send + 'static,
-              F: Future<Output=()> + Send + 'static
-    {
+    pub async fn consume<'a>(&'a self, evt: &'a str) -> BrokerResult<AmqpConsumer> {
+        let (tx, rx) = unbounded();
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
             None => format!("{}:{}", self.group, evt)
@@ -165,34 +184,21 @@ impl AmqpBroker {
             durable: true,
             ..Default::default()
         };
-        let state = self.consume_state.clone();
-        let group = self.group.clone();
-        let evnt = evt.to_string();
-        tokio::spawn_async(async move {
-            let channel = tokio::await!(state.connection.create_channel())
-                .expect("Failed to create channel");
-            tokio::await!(channel.exchange_declare(&group, "direct", exch_opts, FieldTable::new()))
-                .expect("Failed to declare exchange");
-            let queue = tokio::await!(channel.queue_declare(&queue_name, queue_opts, FieldTable::new()))
-                .expect("Failed to declare queue");
-            debug!("Channel ID: {} has declared queue: {}", channel.id, queue_name);
-            tokio::await!(channel.queue_bind(&queue_name, &group, &evnt, QueueBindOptions::default(), FieldTable::new()))
-                .expect("Failed to bind channel to queue");
-            let mut consumer = tokio::await!(channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new()))
-                .expect("Failed to create consumer");
+        let channel = tokio::await!(self.consume_state.connection.create_channel())?;
+        tokio::await!(channel.exchange_declare(&self.group, "direct", exch_opts, FieldTable::new()))?;
+        let queue = tokio::await!(channel.queue_declare(&queue_name, queue_opts, FieldTable::new()))?;
+        debug!("Channel ID: {} has declared queue: {}", channel.id, queue_name);
+        tokio::await!(channel.queue_bind(&queue_name, &self.group, evt, QueueBindOptions::default(), FieldTable::new()))?;
+        let mut consumer = tokio::await!(channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new()))?;
 
+        tokio::spawn_async(async move {
             while let Some(Ok(mess)) = tokio::await!(consumer.next()) {
-                match tokio::await!(channel.basic_ack(mess.delivery_tag, false)) {
-                    Ok(_) => {
-                        let payload = String::from_utf8(mess.data).unwrap();
-                        await!(cb(payload));
-                        debug!("Message acknowledged.")
-                    },
-                    Err(e) => error!("Failed to acknowledge broker message. {:?}", e)
-                }
+                let payload = String::from_utf8(mess.data).unwrap();
+                tx.unbounded_send(payload).expect("Failed to send message to stream");
+                tokio::await!(channel.basic_ack(mess.delivery_tag, false)).expect("Failed to acknowledge message");
             };
         });
 
-        self
+        Ok(AmqpConsumer::new(rx))
     }
 }

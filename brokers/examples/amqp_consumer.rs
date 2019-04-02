@@ -4,6 +4,8 @@ extern crate tokio;
 
 use std::env::var;
 
+use tokio::prelude::*;
+
 use spectacles_brokers::amqp::AmqpBroker;
 
 // This example demonstrates a basic AMQP consumer.
@@ -18,8 +20,11 @@ fn main() {
             .expect("Failed to connect to broker");
         println!("I'm now listening for messages!");
         // Here we attach a callback to the subscribe() method that will be called when we receive a payload for our event name.
-        broker.subscribe("HELLO", async move |payload| {
-            println!("Received Message: {}", payload);
+        let mut hello_consumer = await!(broker.consume("HELLO")).expect("Failed to create consumer");
+        tokio::spawn_async(async move {
+            while let Some(Ok(message)) = await!(hello_consumer.next()) {
+                println!("Message received: {}", message);
+            }
         });
     });
 }
