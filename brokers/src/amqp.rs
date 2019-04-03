@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -40,11 +39,11 @@ struct ConsumerState {
 
 /// A stream of messages that are being consumed in the message queue.
 pub struct AmqpConsumer {
-    recv: UnboundedReceiver<String>
+    recv: UnboundedReceiver<Vec<u8>>
 }
 
 impl AmqpConsumer {
-    fn new(recv: UnboundedReceiver<String>) -> Self {
+    fn new(recv: UnboundedReceiver<Vec<u8>>) -> Self {
         Self {
             recv
         }
@@ -52,7 +51,7 @@ impl AmqpConsumer {
 }
 
 impl Stream for AmqpConsumer {
-    type Item = String;
+    type Item = Vec<u8>;
     type Error = ();
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         self.recv.poll()
@@ -161,7 +160,8 @@ impl AmqpBroker {
     ///
     ///         tokio::spawn_async(async move {
     ///             while let Some(Ok(message)) = await!(consumer.next()) {
-    ///                 println!("Message received: {}", message);
+    ///                 let string = std::str::from_utf8(&message);
+    ///                 println!("Message received: {}", string);
     ///             }
     ///         });
     ///     }
@@ -193,8 +193,7 @@ impl AmqpBroker {
 
         tokio::spawn_async(async move {
             while let Some(Ok(mess)) = tokio::await!(consumer.next()) {
-                let payload = String::from_utf8(mess.data).unwrap();
-                tx.unbounded_send(payload).expect("Failed to send message to stream");
+                tx.unbounded_send(mess.data).expect("Failed to send message to stream");
                 tokio::await!(channel.basic_ack(mess.delivery_tag, false)).expect("Failed to acknowledge message");
             };
         });

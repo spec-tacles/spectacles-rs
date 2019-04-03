@@ -103,7 +103,7 @@ impl Heartbeat {
 
 impl Shard {
     /// Creates a new Discord Shard, with the provided token.
-    pub async fn new(token: String, info: [usize; 2], ws_uri: String) -> Result<Shard> {
+    pub async fn new(token: String, info: [usize; 2], ws_uri: String) -> Result<Self> {
         let (sender, stream) = await!(Shard::begin_connection(&ws_uri))?;
         Ok(Shard {
             token,

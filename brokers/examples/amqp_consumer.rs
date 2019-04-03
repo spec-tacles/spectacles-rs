@@ -19,11 +19,14 @@ fn main() {
         let broker = await!(AmqpBroker::new(&addr, "test".to_string(), None))
             .expect("Failed to connect to broker");
         println!("I'm now listening for messages!");
-        // Here we attach a callback to the subscribe() method that will be called when we receive a payload for our event name.
+        // Next, we create our consumer stream for the provided event. Polling the stream in a separate thread.
         let mut hello_consumer = await!(broker.consume("HELLO")).expect("Failed to create consumer");
         tokio::spawn_async(async move {
             while let Some(Ok(message)) = await!(hello_consumer.next()) {
-                println!("Message received: {}", message);
+                // `message` is our consumed message, in the form of a byte vector.
+                // To get a readable string representation, we can use a string slice.
+                let string = std::str::from_utf8(&message).unwrap();
+                println!("Message received: {}", string);
             }
         });
     });
