@@ -29,7 +29,6 @@ use spectacles_model::snowflake::Snowflake;
 /// A collection of interfaces for endpoint-specific Discord objects.
 pub use views::*;
 
-use crate::constants::BASE_URL;
 pub use crate::errors::{Error, Result};
 
 mod errors;
@@ -105,9 +104,11 @@ impl RestClient {
     {
         if let Some(ref rl) = self.ratelimiter {
             let http = self.http.clone();
+            let base = self.base_url.clone();
             Box::new(futures::future::loop_fn(Arc::clone(rl), move |ratelimit| {
-                let route = Bucket::make_route(endpt.method.clone(), endpt.url.clone());
-                let req = http.request(endpt.method.clone(), &endpt.url)
+                let req_url = format!("{}{}", base, &endpt.url);
+                let route = Bucket::make_route(endpt.method.clone(), req_url.clone());
+                let req = http.request(endpt.method.clone(), &req_url)
                     .query(&endpt.query)
                     .json(&endpt.json);
                 let limiter = Arc::clone(&ratelimit);
@@ -121,7 +122,8 @@ impl RestClient {
                     })
             }).and_then(|mut resp| resp.json().from_err()))
         } else {
-            let req = self.http.request(endpt.method.clone(), &endpt.url)
+            let req_url = format!("{}{}", self.base_url, &endpt.url);
+            let req = self.http.request(endpt.method.clone(), &req_url)
                 .query(&endpt.query)
                 .json(&endpt.json);
             Box::new(req.send().map_err(Error::from)
@@ -146,7 +148,7 @@ impl Endpoint {
     pub fn new(method: Method, url: String) -> Self {
         Self {
             method,
-            url: format!("{}{}", BASE_URL, url),
+            url,
             json: None,
             query: None,
             multipart: None,

@@ -97,7 +97,7 @@ pub struct Message {
     pub pinned: bool,
     /// The ID of the webhook if the message was sent by a webhook.
     #[serde(default)]
-    pub webhook_id: Snowflake,
+    pub webhook_id: Option<Snowflake>,
     /// The type of message sent.
     #[serde(rename = "type")]
     pub kind: MessageType,

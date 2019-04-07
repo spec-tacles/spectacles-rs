@@ -61,7 +61,7 @@ impl Ratelimter {
             let duration = global.sub(Utc::now()).to_std().unwrap();
             warn!("Reached global ratelimit, slowing down request.");
             Box::new(Delay::new(Instant::now() + duration).map_err(Error::from))
-        } else {
+        } else if bucket.lock().remaining <= 0 {
             let ready = bucket.lock().take();
             match ready {
                 Some(_) => {
@@ -73,16 +73,15 @@ impl Ratelimter {
                         .map_err(Error::from)
                         .map(move |_| {
                             let mut curr = bkt.lock();
-                            if curr.remaining <= 0 {
-                                curr.remaining = curr.limit;
-                            };
+                            curr.remaining = curr.limit;
                         })
                     )
                 },
-                None => {
-                    Box::new(futures::future::ok(()))
-                }
+
+                None => Box::new(futures::future::ok(()))
             }
+        } else {
+            Box::new(futures::future::ok(()))
         }
     }
 
@@ -142,7 +141,7 @@ impl Ratelimter {
                     .unwrap()
                     .timestamp();
                 let current = Utc::now().timestamp();
-                let diff = parsed - current;
+                let diff = current - parsed;
                 (*bucket.lock()).reset = Some(Utc.timestamp(reset_time + diff, 0));
 
                 Box::new(futures::future::ok(ResponseStatus::Success(resp)))
