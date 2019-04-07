@@ -1,6 +1,7 @@
 //! Structs related to Discord messages in a guild channel.
 use chrono::{DateTime, FixedOffset};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use tokio_fs::File;
 
 use crate::guild::GuildMember;
 use crate::snowflake::Snowflake;
@@ -16,39 +17,39 @@ mod emoji;
 
 /// Represents different types that can be sent to the Discord API.
 pub trait MessageResponse {
-    fn as_message(self) -> CreateMessage;
+    fn as_message(self) -> CreateMessageOptions;
 }
 
 impl MessageResponse for &str {
-    fn as_message(self) -> CreateMessage {
-        CreateMessage::default().with_content(self)
+    fn as_message(self) -> CreateMessageOptions {
+        CreateMessageOptions::default().content(self)
     }
 }
 
 impl MessageResponse for &String {
-    fn as_message(self) -> CreateMessage {
-        CreateMessage::default().with_content(self.clone())
+    fn as_message(self) -> CreateMessageOptions {
+        CreateMessageOptions::default().content(self.clone())
     }
 }
 
 impl MessageResponse for String {
-    fn as_message(self) -> CreateMessage {
-        CreateMessage::default().with_content(self)
+    fn as_message(self) -> CreateMessageOptions {
+        CreateMessageOptions::default().content(self)
     }
 }
 
 impl MessageResponse for Embed {
-    fn as_message(self) -> CreateMessage {
-        CreateMessage::default().with_embed(self)
+    fn as_message(self) -> CreateMessageOptions {
+        CreateMessageOptions::default().embed(self)
     }
 }
 impl MessageResponse for EditMessage {
-    fn as_message(self) -> CreateMessage {
-        let m = CreateMessage::default();
-        let m = m.clone().with_content(self.content.unwrap_or_default());
+    fn as_message(self) -> CreateMessageOptions {
+        let mut m = CreateMessageOptions::default();
+        m = m.content(self.content.unwrap_or_default());
 
         if let Some(e) = self.embed {
-            m.with_embed(e)
+            m.embed(e)
         } else {
             m
         }
@@ -109,8 +110,8 @@ pub struct Message {
 }
 
 /// Represents a message that is being sent to Discord.
-#[derive(Serialize, Clone, Debug, Default)]
-pub struct CreateMessage {
+#[derive(Serialize, Debug, Default)]
+pub struct CreateMessageOptions {
     /// The content of this message.
     #[serde(skip_serializing_if = "Option::is_none")]
     content: Option<String>,
@@ -118,31 +119,39 @@ pub struct CreateMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     embed: Option<Embed>,
     /// Whether or not this message is a TTS message.
-    #[serde(skip_serializing_if = "Option::is_none")]
     tts: Option<bool>,
+    #[serde(skip_serializing)]
+    pub file: Option<(String, File)>
 }
 
-impl CreateMessage {
+impl CreateMessageOptions {
     /// Creates a new message with the specified content string.
     pub fn new() -> Self {
-        CreateMessage {
+        CreateMessageOptions {
             content: None,
             embed: None,
-            tts: None
+            tts: None,
+            file: None
         }
     }
 
     /// Adds content to the message.
-    pub fn with_content(mut self, content: impl ToString) -> Self {
+    pub fn content(mut self, content: impl ToString) -> Self {
         self.content = Some(content.to_string());
 
         self
     }
 
     /// Adds an Embed object to the message.
-    pub fn with_embed(mut self, embed: Embed) -> Self {
+    pub fn embed(mut self, embed: Embed) -> Self {
         self.embed = Some(embed);
 
+        self
+    }
+
+    /// Adds an attachment to this message.
+    pub fn file(mut self, name: &str, file: File) -> Self {
+        self.file = Some((name.to_string(), file));
         self
     }
 

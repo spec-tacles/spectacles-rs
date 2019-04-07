@@ -15,7 +15,6 @@ name = "spectacles_brokers"
 
 [dependencies]
 lapin-futures-native-tls = "0.10.0"
-futures-beta = { package = "futures-preview", version = "0.3.0-alpha.13", features = ["compat"] }
 tokio = { version = "0.1.15", features = ["async-await-preview"]}
 parking_lot = "0.7.1"
 futures = "0.1.25"

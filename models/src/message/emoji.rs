@@ -35,6 +35,37 @@ pub struct MessageReaction {
     pub emoji: Emoji
 }
 
+/// Query for getting the users who reacted to a message.
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct GetReactions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<Snowflake>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    after: Option<Snowflake>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<i32>,
+}
+
+impl GetReactions {
+    /// Get users before this message ID.
+    pub fn before(mut self, id: Snowflake) -> Self {
+        self.before = Some(id);
+        self
+    }
+
+    /// Get users after this message ID.
+    pub fn after(mut self, id: Snowflake) -> Self {
+        self.after = Some(id);
+        self
+    }
+
+    /// Sets the maximum # of users to return.
+    pub fn limit(mut self, num: i32) -> Self {
+        self.limit = Some(num);
+        self
+    }
+}
+
 /// The gateway event emitted when a guild's emojis are updated.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GuildEmojisUpdate {

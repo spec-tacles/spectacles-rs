@@ -24,7 +24,7 @@ pub struct User {
 
 impl User {
     pub fn get_avatar_url(&self, format: &str) -> String {
-        if let Some(h) = &self.avatar {
+        if let Some(ref h) = self.avatar {
             format!("https://cdn.discordapp.com/avatars/{}/{}.{}", self.id.0, h, format)
         } else {
             let avatars = vec![

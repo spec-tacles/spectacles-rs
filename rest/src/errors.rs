@@ -2,17 +2,23 @@ use std::{
     error::Error as StdError,
     fmt::{Display, Formatter, Result as FmtResult},
     io::Error as IoError,
+    num::ParseIntError,
     result::Result as StdResult,
 };
 
 use reqwest::Error as ReqwestError;
 use serde_json::Error as JsonError;
+use tokio::timer::Error as TimerError;
 
+/// A modified result type which encompasses the global error type.
 pub type Result<T> = StdResult<T, Error>;
 
+/// Represents a global error which can occur throughout the library.
 #[derive(Debug)]
 pub enum Error {
     Json(JsonError),
+    ParseInt(ParseIntError),
+    Timer(TimerError),
     Reqwest(ReqwestError),
     InvalidTokenError,
     Io(IoError),
@@ -28,6 +34,8 @@ impl StdError for Error {
     fn description(&self) -> &str {
         match self {
             Error::Reqwest(e) => e.description(),
+            Error::ParseInt(e) => e.description(),
+            Error::Timer(e) => e.description(),
             Error::Io(e) => e.description(),
             Error::Json(e) => e.description(),
             Error::InvalidTokenError =>
@@ -54,8 +62,21 @@ impl From<ReqwestError> for Error {
         }
     }
 }
+
 impl From<JsonError> for Error {
     fn from(err: JsonError) -> Self {
         Error::Json(err)
+    }
+}
+
+impl From<TimerError> for Error {
+    fn from(err: TimerError) -> Self {
+        Error::Timer(err)
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(err: ParseIntError) -> Self {
+        Error::ParseInt(err)
     }
 }
