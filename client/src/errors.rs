@@ -1,26 +1,30 @@
 use std::{
     error::Error as StdError,
-    // result::Result as StdResult,
     fmt::{Display, Formatter, Result as FmtResult},
     io::Error as IoError,
-    net::AddrParseError
+    net::AddrParseError,
+    result::Result as StdResult
 };
 
+use hyper::error::Error as HyperError;
 use serde_json::Error as JsonError;
+use tokio::timer::Error as TimerError;
 use toml::de::Error as TomlDeError;
 
 use spectacles_brokers::Error as BrokerError;
 use spectacles_gateway::Error as GatewayError;
 
-// pub type Result<T> = StdResult<T, Error>;
+pub type Result<T> = StdResult<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
     Broker(BrokerError),
+    Hyper(HyperError),
     Gateway(GatewayError),
     Addr(AddrParseError),
     Io(IoError),
     TomlDe(TomlDeError),
+    Timer(TimerError),
     Json(JsonError),
     InvalidFile,
 }
@@ -37,6 +41,8 @@ impl StdError for Error {
             Error::Addr(e) => e.description(),
             Error::Broker(e) => e.description(),
             Error::Io(e) => e.description(),
+            Error::Timer(e) => e.description(),
+            Error::Hyper(e) => e.description(),
             Error::Gateway(e) => e.description(),
             Error::Json(e) => e.description(),
             Error::TomlDe(e) => e.description(),
@@ -51,9 +57,21 @@ impl From<AddrParseError> for Error {
     }
 }
 
+impl From<TimerError> for Error {
+    fn from(err: TimerError) -> Self {
+        Error::Timer(err)
+    }
+}
+
 impl From<BrokerError> for Error {
     fn from(err: BrokerError) -> Self {
         Error::Broker(err)
+    }
+}
+
+impl From<HyperError> for Error {
+    fn from(err: HyperError) -> Self {
+        Error::Hyper(err)
     }
 }
 

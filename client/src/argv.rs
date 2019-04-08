@@ -1,13 +1,12 @@
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use std::net::SocketAddr;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const ABOUT: &'static str = env!("CARGO_PKG_DESCRIPTION");
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 
 pub fn get_args() -> ArgMatches<'static> {
     App::new("Spectacles")
         .setting(AppSettings::SubcommandRequired)
-        .version(VERSION)
-        .about(ABOUT)
+        .version(crate_version!())
+        .about(crate_description!())
         .subcommand(SubCommand::with_name("shard")
             .about("Spawn Discord shards and publish events to a message broker.")
             .arg(Arg::with_name("config_path")
@@ -53,6 +52,12 @@ pub fn get_args() -> ArgMatches<'static> {
                 .long("address")
                 .help("The TCP address on which to listen for requests.")
                 .value_name("ADDRESS")
+                .validator(|input| {
+                    match input.parse::<SocketAddr>() {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(format!("Could not parse the provided socket address. {}", e))
+                    }
+                })
             )
             .arg(Arg::with_name("config_path")
                 .short("c")

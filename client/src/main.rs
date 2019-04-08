@@ -1,3 +1,9 @@
+#![feature(futures_api, async_await, await_macro)]
+#![recursion_limit = "128"]
+#[macro_use]
+extern crate clap;
+#[warn(rust_2018_idioms)]
+
 #[macro_use] extern crate log;
 #[macro_use]
 extern crate serde_derive;
@@ -17,17 +23,15 @@ fn main () {
     let _ = kankyo::load();
     env_logger::init();
 
-    match argv::get_args().subcommand() {
-        ("shard", Some(matches)) => {
-            sharder::parse_args(matches).unwrap_or_else(|err| {
-                error!("Failed at spawning shards. {:?}", err);
-            });
-        },
-        ("ratelimit", Some(matches)) => {
-            ratelimiter::bootstrap(matches).unwrap_or_else(|err| {
-                error!("Failed to bootstrap rate limiter service. {:?}", err);
-            });
-        },
-        _ => {}
-    }
+    tokio::run_async(async {
+        match argv::get_args().subcommand() {
+            ("shard", Some(matches)) => {
+                await!(sharder::parse_args(matches.clone())).expect("Failed to spawn shards")
+            },
+            ("ratelimit", Some(matches)) => {
+                ratelimiter::bootstrap(matches).expect("Failed to begin ratelimiter service");
+            },
+            _ => {}
+        };
+    });
 }
