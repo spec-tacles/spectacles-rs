@@ -82,8 +82,8 @@ impl RatelimitServer {
                     let resp_state = Arc::clone(&req_state);
                     let continue_state = Arc::clone(&resp_state);
                     enqueue(path.clone(), req_state)
-                        .and_then(move |_| proxy.map_err(|err| Error::from(err.deref())))
-                        .and_then(|resp| process_response(path, resp, resp_state))
+                        .and_then(move |_| proxy.map_err(|err| Error::from(*err)))
+                        .and_then(|resp| process_response(path, *resp, resp_state))
                         .map(|status| match status {
                             ResponseStatus::Success(resp) => Loop::Break(resp),
                             ResponseStatus::Ratelimited | ResponseStatus::ServerError => Loop::Continue(continue_state)
