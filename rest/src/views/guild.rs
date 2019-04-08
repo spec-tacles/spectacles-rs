@@ -4,6 +4,7 @@ use reqwest::Method;
 use spectacles_model::channel::{Channel, CreateChannelOptions};
 use spectacles_model::guild::{AddMemberOptions, CreateRoleOptions, Guild, GuildBan, GuildEmbed, GuildIntegration, GuildMember, GuildPrune, ListMembersOptions, ModifyGuildEmbedOptions, ModifyGuildIntegrationOptions, ModifyGuildOptions, ModifyMemberOptions, ModifyRoleOptions, Role};
 use spectacles_model::invite::Invite;
+use spectacles_model::message::{CreateEmojiOptions, Emoji, Webhook};
 use spectacles_model::snowflake::Snowflake;
 use spectacles_model::voice::VoiceRegion;
 
@@ -62,6 +63,14 @@ impl GuildView {
     /// Modifies a set of channel positions in this guild.
     pub fn modify_channel_positions(&self) {}
 
+    /// Gets a list of webhooks that belong to this guild.
+    pub fn get_webhooks(&self) -> impl Future<Item=Webhook, Error=Error> {
+        self.client.request(Endpoint::new(
+            Method::GET,
+            format!("/guilds/{}/webhooks", self.id),
+        ))
+    }
+
     /// Gets a guild member of the specified user id.
     pub fn get_member(&self, id: &Snowflake) -> impl Future<Item=GuildMember, Error=Error> {
         self.client.request(Endpoint::new(
@@ -98,6 +107,50 @@ impl GuildView {
                 format!("/guilds/{}/members/{}/roles/{}", self.id, member.0, role.0),
             )
         )
+    }
+
+    /// Gets a list of emojis in the guild.
+    pub fn get_emojis(&self) -> impl Future<Item=Vec<Emoji>, Error=Error> {
+        self.client.request(Endpoint::new(
+            Method::GET,
+            format!("/guilds/{}/emojis", self.id),
+        ))
+    }
+
+    /// Gets a a single emoji by snowflake in the guild.
+    pub fn get_emoji(&self, emoji: &Snowflake) -> impl Future<Item=Emoji, Error=Error> {
+        self.client.request(Endpoint::new(
+            Method::GET,
+            format!("/guilds/{}/emojis/{}", self.id, emoji.0),
+        ))
+    }
+
+    /// Creates a new emoji in this guild, with the provided options.
+    pub fn create_emoji(&self, opts: CreateEmojiOptions) -> impl Future<Item=Emoji, Error=Error> {
+        self.client.request(
+            Endpoint::new(
+                Method::POST,
+                format!("/guilds/{}/emojis", self.id),
+            ).json(opts)
+        )
+    }
+
+    /// Modifies the provided emoji with the given options.
+    pub fn modify_emoji(&self, id: &Snowflake, opts: ModifyGuildEmbedOptions) -> impl Future<Item=Emoji, Error=Error> {
+        self.client.request(
+            Endpoint::new(
+                Method::PATCH,
+                format!("/guilds/{}/emojis/{}", self.id, id.0),
+            ).json(opts)
+        )
+    }
+
+    /// Deletes the provided emoji from the guild.
+    pub fn delete_emoji(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
+        self.client.request(Endpoint::new(
+            Method::DELETE,
+            format!("/guilds/{}/emojis/{}", self.id, emoji.0),
+        ))
     }
 
     /// Gets a list of bans in the guild.

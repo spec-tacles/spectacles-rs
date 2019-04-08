@@ -5,7 +5,7 @@ use tokio::prelude::*;
 
 use spectacles_model::channel::{Channel, ModifyChannelOptions};
 use spectacles_model::invite::{CreateInviteOptions, Invite};
-use spectacles_model::message::{GetReactions, Message, MessageResponse};
+use spectacles_model::message::{GetReactionsOptions, Message, MessageResponse};
 use spectacles_model::snowflake::Snowflake;
 use spectacles_model::User;
 
@@ -42,11 +42,12 @@ impl ChannelView {
         if let Some((name, mut file)) = create.file {
             let mut chunks = vec![];
             file.read_buf(&mut chunks).expect("Failed to process provided file attachment");
-            let form = Form::new();
-            form.part("file", Part::bytes(chunks).file_name(name))
-                .part("payload_json", Part::text(json));
 
-            self.client.request(endpt)
+            self.client.request(endpt.multipart(
+                Form::new()
+                    .part("file", Part::bytes(chunks).file_name(name))
+                    .part("payload_json", Part::text(json))
+            ))
         } else {
             self.client.request(endpt.json(create))
         }
@@ -155,7 +156,7 @@ impl ChannelView {
 
 /// A view for managing a channel's messages.
 pub struct ChannelMessagesView {
-    pub id: u64,
+    id: u64,
     client: RestClient,
 }
 
@@ -213,8 +214,8 @@ impl ChannelMessagesView {
 
 /// A view for working with a a message's reactions.
 pub struct ChannelMessageReactionsView {
-    pub id: u64,
-    pub message_id: u64,
+    id: u64,
+    message_id: u64,
     client: RestClient,
 }
 
@@ -227,7 +228,7 @@ impl ChannelMessageReactionsView {
         }
     }
     /// Get a list of users who have reacted to this message with the provided emoji.
-    pub fn get(&self, id: &Snowflake, opts: GetReactions) -> impl Future<Item=Vec<User>, Error=Error> {
+    pub fn get(&self, id: &Snowflake, opts: GetReactionsOptions) -> impl Future<Item=Vec<User>, Error=Error> {
         self.client.request(
             Endpoint::new(
                 Method::GET,

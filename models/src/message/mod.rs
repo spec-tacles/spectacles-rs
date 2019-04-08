@@ -9,7 +9,7 @@ use crate::User;
 
 pub use self::embed::*;
 pub use self::emoji::*;
-pub use self::webhook::Webhook;
+pub use self::webhook::*;
 
 mod embed;
 mod webhook;
