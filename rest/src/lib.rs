@@ -25,6 +25,8 @@ use serde::ser::Serialize;
 use serde_json::Value;
 
 pub(crate) use ratelimit::*;
+use spectacles_model::channel::Channel;
+use spectacles_model::guild::{CreateGuildOptions, Guild};
 use spectacles_model::invite::Invite;
 use spectacles_model::snowflake::Snowflake;
 use spectacles_model::User;
@@ -109,11 +111,41 @@ impl RestClient {
 
     /// Gets a User object for the provided snowflake.
     pub fn get_user(&self, id: &Snowflake) -> impl Future<Item=User, Error=Error> {
-        self.client.request(Endpoint::new(
+        self.request(Endpoint::new(
             Method::GET,
             format!("/users/{}", id.0),
         ))
     }
+
+    /// Opens a new DM channel with the provided user ID.
+    pub fn create_dm(&self, user: &Snowflake) -> impl Future<Item=Channel, Error=Error> {
+        let json = json!({
+            "recipient_id": user.0
+        });
+
+        self.request(Endpoint::new(
+            Method::POST,
+            String::from("/users/@me/channels"),
+        ).json(json))
+    }
+
+    /// Creates a new guild, setting the current client user as owner.
+    /// This endpoint may only be used for bots who are in less than 10 guilds.
+    pub fn create_guild(&self, opts: CreateGuildOptions) -> impl Future<Item=Guild, Error=Error> {
+        self.request(Endpoint::new(
+            Method::POST,
+            String::from("/guilds"),
+        ).json(opts))
+    }
+
+    /// Leaves the guild using the provided guild ID.
+    pub fn leave_guild(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
+        self.request(Endpoint::new(
+            Method::DELETE,
+            format!("/users/@me/guilds/{}", id.0),
+        ))
+    }
+
 
     /// Modifies properties for the current user.
     /*pub fn modify_current_user(&self) -> impl Future<Item = User, Error = Error> {
@@ -125,7 +157,7 @@ impl RestClient {
 
     /// Obtains a list of Discord voice regions.
     pub fn get_voice_regions(&self) -> impl Future<Item=Vec<VoiceRegion>, Error=Error> {
-        self.client.request(Endpoint::new(
+        self.request(Endpoint::new(
             Method::GET,
             String::from("/voice/regions"),
         ))
@@ -134,7 +166,7 @@ impl RestClient {
     /// Obtains an invite object from Discord using the given code.
     /// The second argument denotes whether the invite should contain approximate member counts
     pub fn get_invite(&self, code: &str, member_counts: bool) -> impl Future<Item=Invite, Error=Error> {
-        self.client.request(Endpoint::new(
+        self.request(Endpoint::new(
             Method::GET,
             format!("/invites/{}?with_counts={}", code, member_counts),
         ))
@@ -143,13 +175,11 @@ impl RestClient {
     /// Deletes this invite from the its parent channel.
     /// This requires that the client have the `MANAGE_CHANNELS` permission.
     pub fn delete_invite(&self, code: &str) -> impl Future<Item=Invite, Error=Error> {
-        self.client.request(Endpoint::new(
+        self.request(Endpoint::new(
             Method::GET,
             format!("/invites/{}", code),
         ))
     }
-
-
 
     /// Makes an HTTP request to the provided Discord API endpoint.
     pub fn request<T>(&self, endpt: Endpoint) -> Box<Future<Item=T, Error=Error> + Send>

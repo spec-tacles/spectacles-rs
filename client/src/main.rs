@@ -8,7 +8,7 @@ extern crate clap;
 #[macro_use]
 extern crate serde_derive;
 
-use log::Level::Info;
+use log::Level::Debug;
 
 mod sharder;
 mod ratelimiter;
@@ -17,21 +17,23 @@ mod argv;
 
 
 fn main () {
-    if !log_enabled!(Info) {
+    if !log_enabled!(Debug) {
         std::env::set_var("RUST_LOG", "INFO");
     };
     let _ = kankyo::load();
     env_logger::init();
 
-    tokio::run_async(async {
-        match argv::get_args().subcommand() {
-            ("shard", Some(matches)) => {
-                await!(sharder::parse_args(matches.clone())).expect("Failed to spawn shards")
-            },
-            ("ratelimit", Some(matches)) => {
-                ratelimiter::bootstrap(matches).expect("Failed to begin ratelimiter service");
-            },
-            _ => {}
-        };
-    });
+    let args = argv::get_args();
+    match args.subcommand() {
+        ("shard", Some(matches)) => {
+            let mts = matches.clone();
+            tokio::run_async(async move {
+                await!(sharder::parse_args(mts)).expect("Failed to spawn shards")
+            });
+        },
+        ("ratelimit", Some(matches)) => {
+            ratelimiter::bootstrap(matches).expect("Failed to begin ratelimiter service");
+        },
+        _ => {}
+    };
 }

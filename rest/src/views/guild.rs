@@ -2,7 +2,7 @@ use futures::future::Future;
 use reqwest::Method;
 
 use spectacles_model::channel::{Channel, CreateChannelOptions};
-use spectacles_model::guild::{AddMemberOptions, CreateRoleOptions, Guild, GuildBan, GuildEmbed, GuildIntegration, GuildMember, GuildPrune, ListMembersOptions, ModifyGuildEmbedOptions, ModifyGuildIntegrationOptions, ModifyGuildOptions, ModifyMemberOptions, ModifyRoleOptions, Role};
+use spectacles_model::guild::{AddMemberOptions, CreateRoleOptions, GetAuditLogOptions, Guild, GuildAuditLog, GuildBan, GuildEmbed, GuildIntegration, GuildMember, GuildPrune, ListMembersOptions, ModifyGuildEmbedOptions, ModifyGuildIntegrationOptions, ModifyGuildOptions, ModifyMemberOptions, ModifyRoleOptions, Role};
 use spectacles_model::invite::Invite;
 use spectacles_model::message::{CreateEmojiOptions, Emoji, Webhook};
 use spectacles_model::snowflake::Snowflake;
@@ -149,8 +149,16 @@ impl GuildView {
     pub fn delete_emoji(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
         self.client.request(Endpoint::new(
             Method::DELETE,
-            format!("/guilds/{}/emojis/{}", self.id, emoji.0),
+            format!("/guilds/{}/emojis/{}", self.id, id.0),
         ))
+    }
+
+    /// Fetches the audit log for this guild.
+    pub fn get_audit_log(&self, opts: GetAuditLogOptions) -> impl Future<Item=GuildAuditLog, Error=Error> {
+        self.client.request(Endpoint::new(
+            Method::GET,
+            format!("/guilds/{}/audit-logs", self.id),
+        ).query(opts))
     }
 
     /// Gets a list of bans in the guild.

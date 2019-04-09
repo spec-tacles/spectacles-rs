@@ -12,8 +12,9 @@ use crate::{
 use crate::snowflake::Snowflake;
 
 pub use self::{
+    audit_log::*,
     member::*,
-    role::*,
+    role::*
 };
 
 mod role;
@@ -306,6 +307,61 @@ impl ModifyGuildIntegrationOptions {
         self
     }
 }
+
+/// Options for creating a Discord guild.
+#[derive(Clone, Debug, Serialize, Default)]
+pub struct CreateGuildOptions {
+    #[serde(default)]
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    region: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    icon: Option<String>,
+    verification_level: Option<VerificationLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_message_notifications: Option<DefaultMessageNotifications>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    explicit_content_filter: Option<ExplicitContentFilter>,
+}
+
+impl CreateGuildOptions {
+    /// Sets the name that the new guild should have. This field is required.
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
+        self
+    }
+
+    /// Sets the voice region name for the new guild.
+    pub fn voice_region(mut self, region: &str) -> Self {
+        self.region = Some(region.to_string());
+        self
+    }
+
+    /// Sets the icon URL for the new guild. Must be base64 encoded.
+    pub fn icon(mut self, icon: String) -> Self {
+        self.icon = Some(icon);
+        self
+    }
+
+    /// Sets the verification level for the guild.
+    pub fn verification_level(mut self, lvl: VerificationLevel) -> Self {
+        self.verification_level = Some(lvl);
+        self
+    }
+
+    /// Sets the default message notifications level for the new guild.
+    pub fn default_message_notifications(mut self, notifs: DefaultMessageNotifications) -> Self {
+        self.default_message_notifications = Some(notifs);
+        self
+    }
+
+    /// Sets the explicit content filter for the new guild.
+    pub fn explicit_content_filter(mut self, filter: ExplicitContentFilter) -> Self {
+        self.explicit_content_filter = Some(filter);
+        self
+    }
+}
+
 
 /// A guild ban object.
 #[derive(Deserialize, Debug, Clone)]

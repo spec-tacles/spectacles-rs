@@ -54,7 +54,7 @@ pub fn parse_argv(args: &ArgMatches) -> Result<RatelimitOptions> {
 
     Ok(RatelimitOptions {
         address,
-        url: String::from("https://discordapp.com/api/v7"),
+        url: String::from("https://discordapp.com"),
         config_path: None,
     })
 }

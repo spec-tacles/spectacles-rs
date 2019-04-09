@@ -4,7 +4,7 @@ use crate::{Snowflake, User};
 use crate::message::embed::Embed;
 
 /// A simple solution to post messages in Discord channels from external sources.
-#[derive(Deserialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct Webhook {
     /// The webhook ID of this webhook.
     pub id: Snowflake,

@@ -17,7 +17,7 @@ chrono = "0.4.6"
 hashbrown = "0.2.0"
 parking_lot = "0.7.1"
 regex = "1.1.5"
-hyper-reverse-proxy = "0.4.0"
+hyper-reverse-proxy = { git = "https://github.com/spec-tacles/hyper-reverse-proxy" }
 hyper = "0.12.25"
 clap = "2.32.0"
 toml = "0.4.10"

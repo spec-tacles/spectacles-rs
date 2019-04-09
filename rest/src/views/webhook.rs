@@ -1,6 +1,7 @@
 use futures::Future;
-use reqwest::async::multipart::{Form, Part};
 use reqwest::Method;
+use reqwest::r#async::multipart::{Form, Part};
+use tokio::prelude::*;
 
 use spectacles_model::message::{ExecuteWebhookOptions, Message, ModifyWebhookOptions, Webhook};
 
@@ -46,7 +47,7 @@ impl WebhookView {
     pub fn modify_with_token(&self, token: &str, opts: ModifyWebhookOptions) -> impl Future<Item=Webhook, Error=Error> {
         self.client.request(Endpoint::new(
             Method::PATCH,
-            format!("/webhooks/{}/{}", self.id.token),
+            format!("/webhooks/{}/{}", self.id, token),
         ).json(opts))
     }
 
@@ -62,16 +63,13 @@ impl WebhookView {
     pub fn delete_with_token(&self, token: &str) -> impl Future<Item=(), Error=Error> {
         self.client.request(Endpoint::new(
             Method::DELETE,
-            format!("/webhooks/{}/{}", self.id.token),
-        ).json(opts))
+            format!("/webhooks/{}/{}", self.id, token),
+        ))
     }
 
     /// Executes the provided webhook, with the provided options.
-    pub fn execute(&self, opts: ExecuteWebhookOptions, wait: bool) -> impl Future<Item=Option<Message>, Error=Error> {
-        let endpt = Endpoint::new(Method::POST, format!("/webhooks/{}/{}", self.id.token));
-        let query = json!({
-            wait: bool
-        });
+    pub fn execute(&self, token: &str, opts: ExecuteWebhookOptions, wait: bool) -> impl Future<Item=Option<Message>, Error=Error> {
+        let endpt = Endpoint::new(Method::POST, format!("/webhooks/{}/{}", self.id, token));
         let json = serde_json::to_string(&opts).expect("Failed to serialize webhook message");
         if let Some((name, mut file)) = opts.file {
             let mut chunks = vec![];
@@ -81,9 +79,14 @@ impl WebhookView {
                 Form::new()
                     .part("file", Part::bytes(chunks).file_name(name))
                     .part("payload_json", Part::text(json))
+            ).query(json!({
+                    "wait": wait
+                })
             ))
         } else {
-            self.client.request(endpt.json(opts))
+            self.client.request(endpt.json(opts).query(json!({
+                "wait": wait
+            })))
         }
     }
 }

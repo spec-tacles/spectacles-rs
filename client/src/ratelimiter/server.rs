@@ -7,7 +7,8 @@ use chrono::{DateTime, Utc};
 use chrono::offset::TimeZone;
 use futures::future::{Future, Loop};
 use futures::stream::Stream;
-use hyper::{Body, Request, Response, Server};
+use hyper::{Body, HeaderMap, Method, Request, Response, Server, Uri, Version};
+use hyper::header::HeaderValue;
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use parking_lot::{Mutex, RwLock};
@@ -26,9 +27,18 @@ pub struct RatelimitServer {
     state: Arc<RatelimitState>,
 }
 
-struct RatelimitState {
+pub struct RatelimitState {
     buckets: Arc<BucketMap>,
     global: Arc<GlobalMutex>,
+}
+
+struct RequestState {
+    ratelimiter: Arc<RatelimitState>,
+    proxy_url: String,
+    method: Method,
+    uri: Uri,
+    version: Version,
+    headers: HeaderMap<HeaderValue>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -38,7 +48,7 @@ struct RatelimitResponse {
     global: bool,
 }
 
-enum ResponseStatus {
+pub enum ResponseStatus {
     Success(Response<Body>),
     Ratelimited,
     ServerError,
@@ -66,28 +76,39 @@ impl RatelimitServer {
             let loop_url = parent_url.clone();
 
             service_fn(move |req: Request<Body>| {
-                let method = req.method();
-                let uri = req.uri();
-                let path = uri.path().to_owned();
-                let route = Bucket::make_route(method, path.clone());
-                let parent_req = hyper_reverse_proxy::call(
-                    remote_addr.ip(),
-                    &loop_url,
-                    req,
-                ).from_err().shared();
-                futures::future::loop_fn(Arc::clone(&loop_state), move |fresh_state| {
-                    let path = path.clone();
-                    let proxy = parent_req.clone();
-                    let req_state = Arc::clone(&fresh_state);
-                    let resp_state = Arc::clone(&req_state);
-                    let continue_state = Arc::clone(&resp_state);
-                    enqueue(path.clone(), req_state)
-                        .and_then(move |_| proxy.map_err(|err| Error::from(*err)))
-                        .and_then(|resp| process_response(path, *resp, resp_state))
-                        .map(|status| match status {
-                            ResponseStatus::Success(resp) => Loop::Break(resp),
-                            ResponseStatus::Ratelimited | ResponseStatus::ServerError => Loop::Continue(continue_state)
-                        })
+                let (parts, body) = req.into_parts();
+                let orig_state = Arc::new(RequestState {
+                    ratelimiter: Arc::clone(&loop_state),
+                    method: parts.method,
+                    headers: parts.headers,
+                    version: parts.version,
+                    uri: parts.uri,
+                    proxy_url: loop_url.clone(),
+                });
+
+                body.concat2().from_err().map(|chunk| chunk.to_vec()).and_then(move |bytes| {
+                    futures::future::loop_fn(Arc::clone(&orig_state), move |state| {
+                        let current_state = Arc::clone(&state);
+                        let resp_state = Arc::clone(&state.ratelimiter);
+                        let continue_state = Arc::clone(&current_state);
+                        let path = current_state.uri.path().to_owned();
+                        let route = Bucket::make_route(&current_state.method, path.clone());
+                        let mut new_req = Request::builder()
+                            .method(&state.method)
+                            .uri(&state.uri)
+                            .version(state.version)
+                            .body(Body::from(bytes.clone()))
+                            .expect("Failed to construct proxy request");
+                        new_req.headers_mut().extend(state.headers.clone());
+
+                        enqueue(route.clone(), Arc::clone(&current_state.ratelimiter))
+                            .and_then(move |_| hyper_reverse_proxy::call(remote_addr.ip(), &current_state.proxy_url, new_req).from_err())
+                            .and_then(|resp| process_response(route, resp, resp_state))
+                            .map(|status| match status {
+                                ResponseStatus::Success(resp) => Loop::Break(resp),
+                                ResponseStatus::Ratelimited | ResponseStatus::ServerError => Loop::Continue(continue_state)
+                            })
+                    })
                 })
             })
         });
