@@ -113,13 +113,13 @@ impl RatelimitServer {
             })
         });
 
-        let server = Server::bind(&address)
+
+        hyper::rt::run(Server::bind(&address)
             .serve(make_svc)
-            .map_err(|e| error!("Failed to start server: {:?}", e));
+            .map_err(|e| error!("Failed to start server: {:?}", e))
+        );
 
         info!("HTTP ratelimit has started proxy on {:?}", address);
-
-        hyper::rt::run(server);
     }
 }
 
