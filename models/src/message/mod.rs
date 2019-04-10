@@ -32,6 +32,12 @@ impl MessageResponse for &String {
     }
 }
 
+impl MessageResponse for CreateMessageOptions {
+    fn as_message(self) -> CreateMessageOptions {
+        self
+    }
+}
+
 impl MessageResponse for String {
     fn as_message(self) -> CreateMessageOptions {
         CreateMessageOptions::default().content(self)
