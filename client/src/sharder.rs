@@ -72,6 +72,7 @@ pub async fn start_sharder(config: SpawnerOptions) {
     let broker = Arc::clone(&amqp);
     tokio::spawn_async(async move {
         while let Some(Ok(shard)) = await!(spawner.next()) {
+            info!("Shard {:?} SPAWNED.", shard.lock().info);
             let shard_num = shard.lock().info[0].to_string();
             let mut consumer = await!(broker.consume(&shard_num)).expect("Failed to consume shard events");
             while let Some(Ok(message)) = await!(consumer.next()) {
