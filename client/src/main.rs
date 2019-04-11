@@ -27,9 +27,7 @@ fn main () {
     match args.subcommand() {
         ("shard", Some(matches)) => {
             let mts = matches.clone();
-            tokio::run_async(async move {
-                await!(sharder::parse_args(mts)).expect("Failed to spawn shards")
-            });
+            tokio::run_async(sharder::parse_args(mts));
         },
         ("ratelimit", Some(matches)) => {
             ratelimiter::bootstrap(matches).expect("Failed to begin ratelimiter service");

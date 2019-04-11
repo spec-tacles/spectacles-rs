@@ -97,9 +97,24 @@ impl RatelimitServer {
                             .method(&state.method)
                             .uri(&state.uri)
                             .version(state.version)
-                            .body(Body::from(bytes.clone()))
+                            .body({
+                                match state.method {
+                                    Method::GET => Body::default(),
+                                    _ => Body::from(bytes.clone())
+                                }
+                            })
                             .expect("Failed to construct proxy request");
-                        new_req.headers_mut().extend(state.headers.clone());
+
+                        let old_headers = state.headers.clone();
+                        let mut new_headers = HeaderMap::new();
+                        if old_headers.contains_key("Authorization") {
+                            new_headers.insert("Authorization", old_headers["Authorization"].clone());
+                        };
+                        if old_headers.contains_key("User-Agent") {
+                            new_headers.insert("User-Agent", old_headers["User-Agent"].clone());
+                        };
+                        new_headers.insert("Content-Type", old_headers["Content-Type"].clone());
+                        *new_req.headers_mut() = new_headers;
 
                         enqueue(route.clone(), Arc::clone(&current_state.ratelimiter))
                             .and_then(move |_| hyper_reverse_proxy::call(remote_addr.ip(), &current_state.proxy_url, new_req).from_err())
