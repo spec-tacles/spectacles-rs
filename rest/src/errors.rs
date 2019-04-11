@@ -16,7 +16,7 @@ pub type Result<T> = StdResult<T, Error>;
 
 /// An HTTP error encountered as a result of a request sent to the Discord API.
 #[derive(Debug)]
-pub struct DiscordAPIError {
+pub struct APIError {
     /// The error message returned my Discord.
     pub message: String,
     /// The error code returned by Discord.
@@ -25,13 +25,13 @@ pub struct DiscordAPIError {
     pub http_status: StatusCode,
 }
 
-impl StdError for DiscordAPIError {
+impl StdError for APIError {
     fn description(&self) -> &str {
         self.message.as_str()
     }
 }
 
-impl Display for DiscordAPIError {
+impl Display for APIError {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         f.write_str(self.description())
     }
@@ -40,7 +40,7 @@ impl Display for DiscordAPIError {
 #[derive(Debug)]
 pub enum Error {
     Json(JsonError),
-    Discord(DiscordAPIError),
+    Discord(APIError),
     ParseInt(ParseIntError),
     Timer(TimerError),
     Reqwest(ReqwestError),

@@ -55,7 +55,7 @@ pub struct RestClient {
 impl RestClient {
     /// Creates a new REST client with the provided configuration.
     /// The second argument denotes whether or not to use the built-in rate limiter to rate limit requests to the Discord API.
-    /// If this is set to false, it is the USER's responsibility to ensure that all requests to the Discord API are properly rate limited.
+    /// If you plan to use a distributed architecture, you will need an external ratelimiter to ensure ratelimis are kept across servers.
     pub fn new(token: String, using_ratelimiter: bool) -> Self {
         let token = if token.starts_with("Bot ") {
             token
@@ -88,7 +88,7 @@ impl RestClient {
     }
 
     /// Changes the base URL for all requests that are made to the Discord API.
-    /// This method is most commonly used to configure an external ratelimiter service.
+    /// Here, you may specify a URL to an HTTP ratelimiter proxy.
     pub fn set_base_url(mut self, url: String) -> Self {
         self.base_url = url;
         self
@@ -182,7 +182,8 @@ impl RestClient {
     }
 
     /// Makes an HTTP request to the provided Discord API endpoint.
-    pub fn request<T>(&self, endpt: Endpoint) -> Box<Future<Item=T, Error=Error> + Send>
+    /// Depending on the ratelimiter status, the request may or may not be rate limited.
+    pub fn request<T>(&self, mut endpt: Endpoint) -> Box<Future<Item=T, Error=Error> + Send>
         where T: DeserializeOwned + Send + 'static
     {
         if let Some(ref rl) = self.ratelimiter {
@@ -191,9 +192,13 @@ impl RestClient {
             Box::new(futures::future::loop_fn(Arc::clone(rl), move |ratelimit| {
                 let req_url = format!("{}{}", base, &endpt.url);
                 let route = Bucket::make_route(endpt.method.clone(), req_url.clone());
-                let req = http.request(endpt.method.clone(), &req_url)
+                let mut req = http.request(endpt.method.clone(), &req_url)
                     .query(&endpt.query)
                     .json(&endpt.json);
+                if endpt.multipart.is_some() {
+                    let form = endpt.multipart.take().unwrap();
+                    req = req.multipart(form);
+                };
                 let limiter = Arc::clone(&ratelimit);
                 let limiter_2 = Arc::clone(&limiter);
                 ratelimit.lock().enqueue(route.clone())
@@ -258,7 +263,7 @@ impl Endpoint {
         self
     }
 
-    /// Adds a multipart form to the endpoint.
+    /// Adds a multipart form to the endpoint, which is useful for sending files to the Discord API.
     pub fn multipart(mut self, payload: Form) -> Endpoint {
         self.multipart = Some(payload);
         self

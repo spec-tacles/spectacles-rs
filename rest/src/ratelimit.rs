@@ -16,7 +16,7 @@ use reqwest::r#async::{Client as ReqwestClient, Response};
 use tokio::timer::Delay;
 
 use crate::Error;
-use crate::errors::DiscordAPIError;
+use crate::errors::APIError;
 
 #[derive(Deserialize, Debug, Clone)]
 struct RatelimitResponse {
@@ -137,7 +137,7 @@ impl Ratelimter {
         } else if status.is_client_error() {
             Box::new(resp.json::<ErrorResponse>().from_err()
                 .and_then(move |body| {
-                    futures::future::err(Error::Discord(DiscordAPIError {
+                    futures::future::err(Error::Discord(APIError {
                         code: body.code,
                         message: body.message,
                         http_status: resp.status(),
