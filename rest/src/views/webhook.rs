@@ -1,7 +1,6 @@
 use futures::Future;
 use reqwest::Method;
 use reqwest::r#async::multipart::{Form, Part};
-use tokio::prelude::*;
 
 use spectacles_model::message::{ExecuteWebhookOptions, Message, ModifyWebhookOptions, Webhook};
 
@@ -71,18 +70,12 @@ impl WebhookView {
     pub fn execute(&self, token: &str, opts: ExecuteWebhookOptions, wait: bool) -> impl Future<Item=Option<Message>, Error=Error> {
         let endpt = Endpoint::new(Method::POST, format!("/webhooks/{}/{}", self.id, token));
         let json = serde_json::to_string(&opts).expect("Failed to serialize webhook message");
-        if let Some((name, mut file)) = opts.file {
-            let mut chunks = vec![];
-            file.read(&mut chunks).expect("Failed to process provided file attachment");
-
+        if let Some((name, file)) = opts.file {
             self.client.request(endpt.multipart(
                 Form::new()
-                    .part("file", Part::bytes(chunks).file_name(name))
+                    .part("file", Part::bytes(file).file_name(name))
                     .part("payload_json", Part::text(json))
-            ).query(json!({
-                    "wait": wait
-                })
-            ))
+            ).query(json!({ "wait": wait })))
         } else {
             self.client.request(endpt.json(opts).query(json!({
                 "wait": wait

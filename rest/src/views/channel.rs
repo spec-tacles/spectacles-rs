@@ -1,7 +1,6 @@
 use futures::future::Future;
 use reqwest::Method;
 use reqwest::r#async::multipart::{Form, Part};
-use tokio::prelude::*;
 
 use spectacles_model::channel::{Channel, ModifyChannelOptions};
 use spectacles_model::invite::{CreateInviteOptions, Invite};
@@ -32,24 +31,21 @@ impl ChannelView {
 
     /// Creates a message in the current channel.
     /// This endpoint requires the Create Messages permission on Discord.
-    pub fn create_message(&self, payload: impl MessageResponse) -> impl Future<Item=Message, Error=Error> {
+    pub fn create_message(&self, payload: impl MessageResponse) -> Box<Future<Item=Message, Error=Error>> {
         let endpt = Endpoint::new(
             Method::POST,
             format!("/channels/{}/messages", self.id),
         );
         let create = payload.as_message();
         let json = serde_json::to_string(&create).expect("Failed to serialize message");
-        if let Some((name, mut file)) = create.file {
-            let mut chunks = vec![];
-            file.read(&mut chunks).expect("Failed to process attached file");
-
+        if let Some((name, file)) = create.file {
             self.client.request(endpt.multipart(
                 Form::new()
-                    .part("file", Part::bytes(chunks).file_name(name))
+                    .part("file", Part::bytes(file).file_name(name))
                     .part("payload_json", Part::text(json))
             ))
         } else {
-            self.client.request(endpt.json(create))
+            Box::new(self.client.request(endpt.json(create)))
         }
     }
 
