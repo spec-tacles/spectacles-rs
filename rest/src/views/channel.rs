@@ -41,7 +41,7 @@ impl ChannelView {
         let json = serde_json::to_string(&create).expect("Failed to serialize message");
         if let Some((name, mut file)) = create.file {
             let mut chunks = vec![];
-            file.read_buf(&mut chunks).expect("Failed to process provided file attachment");
+            file.read(&mut chunks).expect("Failed to process attached file");
 
             self.client.request(endpt.multipart(
                 Form::new()

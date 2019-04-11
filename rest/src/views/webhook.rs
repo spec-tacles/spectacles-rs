@@ -73,7 +73,7 @@ impl WebhookView {
         let json = serde_json::to_string(&opts).expect("Failed to serialize webhook message");
         if let Some((name, mut file)) = opts.file {
             let mut chunks = vec![];
-            file.read_buf(&mut chunks).expect("Failed to process provided file attachment");
+            file.read(&mut chunks).expect("Failed to process provided file attachment");
 
             self.client.request(endpt.multipart(
                 Form::new()
