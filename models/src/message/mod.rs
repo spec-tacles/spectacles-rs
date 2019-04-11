@@ -1,6 +1,7 @@
 //! Structs related to Discord messages in a guild channel.
 use chrono::{DateTime, FixedOffset};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use tokio_fs::File;
 
 use crate::guild::GuildMember;
 use crate::snowflake::Snowflake;
@@ -126,7 +127,7 @@ pub struct CreateMessageOptions {
     /// Whether or not this message is a TTS message.
     tts: Option<bool>,
     #[serde(skip_serializing)]
-    pub file: Option<(String, Vec<u8>)>
+    pub file: Option<(String, File)>
 }
 
 impl CreateMessageOptions {
@@ -156,7 +157,7 @@ impl CreateMessageOptions {
 
     /// Adds an file attachment to this message.
     /// Accepts a name for the file, and a buffer of the file's contents.
-    pub fn file(mut self, name: &str, file: Vec<u8>) -> Self {
+    pub fn file(mut self, name: &str, file: File) -> Self {
         self.file = Some((name.to_string(), file));
         self
     }

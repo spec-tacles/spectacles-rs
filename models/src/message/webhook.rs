@@ -1,3 +1,5 @@
+use tokio_fs::File;
+
 use crate::{Snowflake, User};
 use crate::message::embed::Embed;
 
@@ -64,7 +66,7 @@ pub struct ExecuteWebhookOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     tts: Option<bool>,
     #[serde(skip_serializing)]
-    pub file: Option<(String, Vec<u8>)>,
+    pub file: Option<(String, File)>,
     embeds: Vec<Embed>,
 }
 
@@ -95,7 +97,7 @@ impl ExecuteWebhookOptions {
 
     /// Adds a file to be sent with this webhook's message.
     /// Accepts a file name and a buffer of the file's contents.
-    pub fn file(mut self, name: &str, file: Vec<u8>) -> Self {
+    pub fn file(mut self, name: &str, file: File) -> Self {
         self.file = Some((name.to_string(), file));
         self
     }
