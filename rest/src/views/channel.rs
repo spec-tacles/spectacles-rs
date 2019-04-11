@@ -31,7 +31,7 @@ impl ChannelView {
 
     /// Creates a message in the current channel.
     /// This endpoint requires the Create Messages permission on Discord.
-    pub fn create_message(&self, payload: impl MessageResponse) -> Box<Future<Item=Message, Error=Error>> {
+    pub fn create_message(&self, payload: impl MessageResponse) -> impl Future<Item=Message, Error=Error> {
         let endpt = Endpoint::new(
             Method::POST,
             format!("/channels/{}/messages", self.id),
@@ -45,7 +45,7 @@ impl ChannelView {
                     .part("payload_json", Part::text(json))
             ))
         } else {
-            Box::new(self.client.request(endpt.json(create)))
+            self.client.request(endpt.json(create))
         }
     }
 
