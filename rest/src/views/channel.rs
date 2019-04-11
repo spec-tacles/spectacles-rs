@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use futures::future::Future;
 use reqwest::Method;
 use reqwest::r#async::multipart::{Form, Part};
@@ -38,10 +40,19 @@ impl ChannelView {
         );
         let create = payload.as_message();
         let json = serde_json::to_string(&create).expect("Failed to serialize message");
+<<<<<<< HEAD
         if let Some((name, file)) = create.file {
             self.client.request(endpt.multipart(
                 Form::new()
                     .part("file", Part::bytes(file).file_name(name))
+=======
+        if let Some((name, mut file)) = create.file {
+            let mut buffer = vec![];
+            file.read_to_end(&mut buffer).expect("Failed to read file contents");
+            self.client.request(endpt.multipart(
+                Form::new()
+                    .part("file", Part::bytes(buffer).file_name(name))
+>>>>>>> 8703ee9306b689f62d08f5ff6bb07e456c69fcbb
                     .part("payload_json", Part::text(json))
             ))
         } else {

@@ -32,7 +32,7 @@ pub struct SpecGatewayMessage<'a> {
     pub packet: &'a RawValue,
 }
 
-pub async fn start_sharder(config: SpawnerOptions) -> Result<()> {
+pub async fn start_sharder(config: SpawnerOptions) {
     let amqp_url = config.amqp_url.clone();
     let group = config.amqp_group.clone();
     let subgroup = config.amqp_subgroup.clone();
@@ -41,8 +41,11 @@ pub async fn start_sharder(config: SpawnerOptions) -> Result<()> {
         Some(r) => ShardStrategy::SpawnAmount(r),
         None => ShardStrategy::Recommended
     };
-    let amqp = Arc::new(await!(AmqpBroker::new(&amqp_url, group, subgroup))?);
-    let mut manager = await!(ShardManager::new(token, shard_count))?;
+    let amqp = Arc::new(
+        await!(AmqpBroker::new(&amqp_url, group, subgroup)).expect("Failed to initialize broker")
+    );
+    let mut manager = await!(ShardManager::new(token, shard_count))
+        .expect("Failed to create sharding manager");
     let (mut spawner, mut packets) = manager.begin_spawn();
 
     // Handle the SEND queue, where shard ID can be calculated from guild ID and forwarded to the correct shard queue.
@@ -69,6 +72,7 @@ pub async fn start_sharder(config: SpawnerOptions) -> Result<()> {
     let broker = Arc::clone(&amqp);
     tokio::spawn_async(async move {
         while let Some(Ok(shard)) = await!(spawner.next()) {
+            info!("Shard {:?} SPAWNED.", shard.lock().info);
             let shard_num = shard.lock().info[0].to_string();
             let mut consumer = await!(broker.consume(&shard_num)).expect("Failed to consume shard events");
             while let Some(Ok(message)) = await!(consumer.next()) {
@@ -107,22 +111,19 @@ pub async fn start_sharder(config: SpawnerOptions) -> Result<()> {
         }
     });
 
-    Ok(())
 }
 
-pub async fn parse_args(results: ArgMatches) -> Result<()> {
+pub async fn parse_args(results: ArgMatches) {
     let cfg = if results.value_of("config_path").is_some() || env::var("CONFIG_FILE_PATH").is_ok() {
         let path = results.value_of("CONFIG_PATH")
             .map(|s| s.to_string())
             .unwrap_or(env::var("CONFIG_FILE_PATH").unwrap());
-        parse_config_file(path.to_string())?
+        parse_config_file(path.to_string()).expect("Failed to parse configuration file")
     } else {
-        parse_argv(results.clone())?
+        parse_argv(results.clone()).expect("Failed to parse command line arguments")
     };
 
-    await!(start_sharder(cfg))?;
-
-    Ok(())
+    await!(start_sharder(cfg));
 }
 
 fn parse_argv(results: ArgMatches) -> Result<SpawnerOptions> {

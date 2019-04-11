@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use futures::Future;
 use reqwest::Method;
 use reqwest::r#async::multipart::{Form, Part};
@@ -70,16 +72,22 @@ impl WebhookView {
     pub fn execute(&self, token: &str, opts: ExecuteWebhookOptions, wait: bool) -> impl Future<Item=Option<Message>, Error=Error> {
         let endpt = Endpoint::new(Method::POST, format!("/webhooks/{}/{}", self.id, token));
         let json = serde_json::to_string(&opts).expect("Failed to serialize webhook message");
+<<<<<<< HEAD
         if let Some((name, file)) = opts.file {
 
             self.client.request(endpt.multipart(
                 Form::new()
                     .part("file", Part::bytes(file).file_name(name))
+=======
+        if let Some((name, mut file)) = opts.file {
+            let mut buffer = vec![];
+            file.read_to_end(&mut buffer).expect("Failed to read file contents");
+            self.client.request(endpt.multipart(
+                Form::new()
+                    .part("file", Part::bytes(buffer).file_name(name))
+>>>>>>> 8703ee9306b689f62d08f5ff6bb07e456c69fcbb
                     .part("payload_json", Part::text(json))
-            ).query(json!({
-                    "wait": wait
-                })
-            ))
+            ).query(json!({ "wait": wait })))
         } else {
             self.client.request(endpt.json(opts).query(json!({
                 "wait": wait

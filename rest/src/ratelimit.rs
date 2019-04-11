@@ -16,6 +16,7 @@ use reqwest::r#async::{Client as ReqwestClient, Response};
 use tokio::timer::Delay;
 
 use crate::Error;
+use crate::errors::APIError;
 
 #[derive(Deserialize, Debug, Clone)]
 struct RatelimitResponse {
@@ -40,6 +41,13 @@ pub enum ResponseStatus {
     Ratelimited,
     ServerError,
 }
+
+#[derive(Deserialize)]
+struct ErrorResponse {
+    code: i32,
+    message: String,
+}
+
 
 impl Ratelimter {
     pub fn new(http: ReqwestClient) -> Self {
@@ -126,6 +134,16 @@ impl Ratelimter {
 
                 ResponseStatus::Ratelimited
             }))
+        } else if status.is_client_error() {
+            Box::new(resp.json::<ErrorResponse>().from_err()
+                .and_then(move |body| {
+                    futures::future::err(Error::Discord(APIError {
+                        code: body.code,
+                        message: body.message,
+                        http_status: resp.status(),
+                    }))
+                })
+            )
         } else {
             let bucket = Arc::clone(&bucket);
             if headers.contains_key("x-ratelimit-reset") {
