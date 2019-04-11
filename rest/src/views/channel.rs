@@ -1,7 +1,6 @@
 use futures::future::Future;
 use reqwest::Method;
 use reqwest::r#async::multipart::{Form, Part};
-use tokio::prelude::*;
 
 use spectacles_model::channel::{Channel, ModifyChannelOptions};
 use spectacles_model::invite::{CreateInviteOptions, Invite};
@@ -39,13 +38,10 @@ impl ChannelView {
         );
         let create = payload.as_message();
         let json = serde_json::to_string(&create).expect("Failed to serialize message");
-        if let Some((name, mut file)) = create.file {
-            let mut chunks = vec![];
-            file.read_buf(&mut chunks).expect("Failed to process provided file attachment");
-
+        if let Some((name, file)) = create.file {
             self.client.request(endpt.multipart(
                 Form::new()
-                    .part("file", Part::bytes(chunks).file_name(name))
+                    .part("file", Part::bytes(file).file_name(name))
                     .part("payload_json", Part::text(json))
             ))
         } else {
