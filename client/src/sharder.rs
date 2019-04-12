@@ -47,6 +47,7 @@ pub async fn start_sharder(config: SpawnerOptions) {
     let mut manager = await!(ShardManager::new(token, shard_count))
         .expect("Failed to create sharding manager");
     let (mut spawner, mut packets) = manager.begin_spawn();
+    info!("Spawner has completed bootstrap: spawning shards.");
 
     // Handle the SEND queue, where shard ID can be calculated from guild ID and forwarded to the correct shard queue.
     let mut send_consumer = await!(amqp.consume("SEND")).expect("Failed to consume SEND event");
