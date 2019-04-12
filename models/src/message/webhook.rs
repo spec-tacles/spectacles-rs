@@ -94,15 +94,11 @@ impl ExecuteWebhookOptions {
     }
 
     /// Adds a file to be sent with this webhook's message.
-<<<<<<< HEAD
     pub fn file(mut self, name: &str, file: Vec<u8>) -> Self {
-=======
-    /// Accepts a file name and a buffer of the file's contents.
-    pub fn file(mut self, name: &str, file: File) -> Self {
->>>>>>> 8703ee9306b689f62d08f5ff6bb07e456c69fcbb
         self.file = Some((name.to_string(), file));
         self
     }
+
 
     /// Adds an embed to the collection of embeds being sent with this embed.
     pub fn embed(mut self, embe: Embed) -> Self {

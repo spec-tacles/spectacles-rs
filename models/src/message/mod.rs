@@ -154,14 +154,8 @@ impl CreateMessageOptions {
         self
     }
 
-<<<<<<< HEAD
     /// Adds an attachment to this message.
     pub fn file(mut self, name: &str, file: Vec<u8>) -> Self {
-=======
-    /// Adds an file attachment to this message.
-    /// Accepts a name for the file, and a buffer of the file's contents.
-    pub fn file(mut self, name: &str, file: File) -> Self {
->>>>>>> 8703ee9306b689f62d08f5ff6bb07e456c69fcbb
         self.file = Some((name.to_string(), file));
         self
     }
