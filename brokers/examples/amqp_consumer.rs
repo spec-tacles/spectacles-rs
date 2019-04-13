@@ -1,6 +1,6 @@
 use std::env::var;
 
-use futures::future::Future;
+use tokio::prelude::*;
 
 use spectacles_brokers::amqp::AmqpBroker;
 
@@ -10,16 +10,22 @@ fn main() {
     let addr = var("AMQP_ADDR").expect("No AMQP server address found.");
     // We will begin by initializing our AMQP broker struct.
     // Here, we pass in our AMQP URI, and the group (exchange) that the broker will adhere to.
-    // You may also specify a subgroup, if you would like to differentiate multiple queues for the same event on the same exchange.
-    let connect = AmqpBroker::new(&addr, "test".to_string(), None);
+    // You may also specify a subgroup, if you would like to differentiate multiple queues for the same
+    // event on the same exchange.
+    let connect = AmqpBroker::new(addr, "test".to_string(), None)
+        .map_err(|err| {
+            eprintln!("Failed to create AMQP broker: {:?}", err);
+        });
     let result = connect.and_then(|broker| {
+        println!("Broker created, listening for messages.");
         // Now, we will subscribe and listen for the event we publish in the consumer.
-        // We provide a callback function to the subscribe() method, which will be called when a message is received.
-        broker.subscribe("HELLO".to_string(), |payload| {
-            println!("Received Message: {}", payload);
+        // The consume() method returns a stream of AMQP methods represented as a buffer of the message contents.
+        broker.consume("HELLO").for_each(|payload| {
+            let text = std::str::from_utf8(&payload).expect("Failed to deserialize payload");
+            println!("Received Payload: {:?}", text);
+
+            Ok(())
         })
-    }).map_err(|err| {
-        eprintln!("An error was encountered during subscribe: {}", err);
     });
 
     // Here, we create our tokio runtime which allows us to run asynchronous code with ease.

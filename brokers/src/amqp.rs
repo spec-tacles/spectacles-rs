@@ -1,5 +1,9 @@
+use std::sync::Arc;
+use std::time::Duration;
+
 use futures::{future::Future, Stream};
-// use futures_backoff::Strategy;
+use futures::sync::mpsc::{unbounded, UnboundedReceiver};
+use futures_backoff::Strategy;
 use lapin_futures_native_tls::{AMQPConnectionNativeTlsExt, AMQPStream};
 use lapin_futures_native_tls::lapin::{
     channel::{
@@ -10,23 +14,60 @@ use lapin_futures_native_tls::lapin::{
         QueueBindOptions,
         QueueDeclareOptions
     },
+    client::{Client as LapinClient, HeartbeatHandle},
     types::FieldTable,
 };
 use lapin_futures_native_tls::lapin::channel::BasicProperties;
+use tokio::prelude::*;
 
 use crate::errors::Error;
 
 pub type AmqpProperties = BasicProperties;
 
+/// A stream of messages that are being consumed in the message queue.
+pub struct AmqpConsumer {
+    recv: UnboundedReceiver<Vec<u8>>
+}
+
+impl AmqpConsumer {
+    fn new(recv: UnboundedReceiver<Vec<u8>>) -> Self {
+        Self {
+            recv
+        }
+    }
+}
+
+impl Stream for AmqpConsumer {
+    type Item = Vec<u8>;
+    type Error = ();
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        self.recv.poll()
+    }
+}
+
+
+#[derive(Clone)]
+struct ProducerState {
+    connection: LapinClient<AMQPStream>,
+    heartbeat: Arc<HeartbeatHandle>,
+    channel: Channel<AMQPStream>,
+}
+
+#[derive(Clone)]
+struct ConsumerState {
+    connection: LapinClient<AMQPStream>,
+    heartbeat: Arc<HeartbeatHandle>,
+}
+
 /// Central AMQP message brokers client.
 #[derive(Clone)]
 pub struct AmqpBroker {
-    /// The AMQP channel used for processing messages.
-    pub channel: Channel<AMQPStream>,
     /// The group used for consuming and producing messages.
     pub group: String,
     /// The subgroup used for consuming and producing messages.
-    pub subgroup: Option<String>
+    pub subgroup: Option<String>,
+    prod_state: ProducerState,
+    consume_state: ConsumerState,
 }
 
 impl AmqpBroker {
@@ -40,7 +81,7 @@ impl AmqpBroker {
     /// fn main() {
     ///     let amqp = var("AMQP_URL").expect("No AMQP Address has been provided.");
     ///     tokio::run({
-    ///         AmqpBroker::new(&amqp, "mygroup".to_string(), None)
+    ///         AmqpBroker::new(amqp, "mygroup".to_string(), None)
     ///         .map(|broker| {
     ///             /// Publish and subscribe to events here.
     ///         });
@@ -48,33 +89,34 @@ impl AmqpBroker {
     /// }
     /// ```
 
-    pub fn new<'a>(amqp_uri: &str, group: String, subgroup: Option<String>) -> impl Future<Item=AmqpBroker, Error=Error> + 'a {
-        /*let retry_strategy = Strategy::fibonacci(Duration::from_secs(2))
-            .with_max_retries(10);*/
-        let gr = group.clone();
-        amqp_uri.connect_cancellable(|err| {
+    pub fn new(amqp_uri: String, group: String, subgroup: Option<String>) -> impl Future<Item=AmqpBroker, Error=Error> {
+        let retry_strategy = Strategy::fibonacci(Duration::from_secs(2))
+            .with_max_retries(10);
+        let uri = amqp_uri.clone();
+        let producer = retry_strategy.retry(move || uri.as_str().connect_cancellable(|err| {
             eprintln!("Error encountered while attempting heartbeat. {}", err);
-        }).map_err(Error::from)
-            .and_then(|(amqp, _)| amqp.create_channel().from_err())
-            .and_then(move |channel| {
-            debug!("Created AMQP Channel With ID: {}", &channel.id);
-                channel.exchange_declare(&gr, "direct", ExchangeDeclareOptions {
-                durable: true,
-                ..Default::default()
-                }, FieldTable::new()).map(|_| channel).from_err()
-            }).map(|channel| {
-            Self {
-                channel,
+        })).from_err::<Error>();
+        let consumer = retry_strategy.retry(move || amqp_uri.as_str().connect_cancellable(|err| {
+            eprintln!("Error encountered while attempting heartbeat. {}", err);
+        })).from_err::<Error>();
+        producer.join(consumer).and_then(|(prod, cons)| prod.0.create_channel()
+            .from_err()
+            .map(|chan| Self {
+                consume_state: ConsumerState {
+                    connection: cons.0,
+                    heartbeat: Arc::new(cons.1),
+                },
+                prod_state: ProducerState {
+                    connection: prod.0,
+                    heartbeat: Arc::new(prod.1),
+                    channel: chan,
+                },
                 group,
                 subgroup,
-            }
-        }).from_err()
+            })
+        ).from_err()
     }
 
-    /// Closes the currently open channel.
-    pub fn close(&self, code: u16, msg: String) -> impl Future<Item = (), Error = Error> {
-        self.channel.close(code, msg.as_ref()).map_err(Error::from)
-    }
 
     /// Publishes a payload for the provided event to the message brokers.
     /// You must serialize all payloads to a Vector of bytes.
@@ -95,7 +137,7 @@ impl AmqpBroker {
     ///
     pub fn publish(&self, evt: &str, payload: Vec<u8>, properties: AmqpProperties) -> impl Future<Item=Option<u64>, Error=Error> {
         debug!("Publishing event: {} to the AMQP server.", evt);
-        self.channel.basic_publish(
+        self.prod_state.channel.basic_publish(
             self.group.as_ref(),
             evt,
             payload,
@@ -104,58 +146,81 @@ impl AmqpBroker {
         ).map_err(Error::from)
     }
 
-    /// Subscribes to the provided event, with a callback that is called when an event is received.
+    /// Attempts to consume the provided event. Returns a stream, which is populated with each incoming AMQP message.
     /// # Example
     /// ```rust,norun
-    /// AmqpBroker::new(&addr, "mygroup", None)
+    /// AmqpBroker::new(addr, "mygroup", None)
     ///    .and_then(|broker| {
-    ///         broker.subscribe("MESSAGE_CREATE", |payload| {
+    ///         broker.consume("MESSAGE_CREATE").for_each(|payload| {
     ///             println!("Message Event Received: {}", payload);
+    ///
+    ///             Ok(())
     ///         })
     ///     })
     ///     .map(|_| {
-    ///         println!("Successfully subscribed to the group!");
+    ///         println!("Successfully consumed queue.");
     ///     })
     /// ```
     ///
-    pub fn subscribe<C>(self, evt: String, callback: C) -> impl Future<Item=(), Error=Error>
-        where C: Fn(&str) + Send + Sync + 'static
-    {
+    pub fn consume(&self, evt: &str) -> AmqpConsumer {
+        let (tx, rx) = unbounded();
+        let exch_opts = ExchangeDeclareOptions {
+            durable: true,
+            ..Default::default()
+        };
+        let queue_opts = QueueDeclareOptions {
+            durable: true,
+            ..Default::default()
+        };
         let queue_name = match &self.subgroup {
             Some(g) => format!("{}:{}:{}", self.group, g, evt),
             None => format!("{}:{}", self.group, evt)
         };
-        let channel = self.channel.clone();
         let group = self.group.clone();
-        channel.queue_declare(
-            queue_name.as_str(),
-            QueueDeclareOptions {
-                durable: true,
-                ..Default::default()
-            },
-            FieldTable::new()
-        ).and_then(move |queue| {
-            debug!("Channel ID: {} has declared queue: {}", channel.id, queue_name);
-            channel.queue_bind(
-                queue_name.as_str(),
-                &group,
-                evt.as_str(),
-                QueueBindOptions::default(),
+        let event = evt.to_string();
+
+
+        tokio::spawn(self.consume_state.connection.create_channel()
+            .and_then({
+                let group = group.clone();
+                move |channel| channel.exchange_declare(
+                    &group,
+                    "direct",
+                    exch_opts,
+                    FieldTable::new(),
+                ).map(|_| channel)
+            })
+            .and_then({
+                let name = queue_name.clone();
+                move |channel| channel.queue_bind(
+                    &name,
+                    &group,
+                    &event,
+                    QueueBindOptions::default(),
+                    FieldTable::new(),
+                ).map(|_| channel)
+            })
+            .and_then(move |channel| channel.queue_declare(
+                &queue_name,
+                queue_opts,
                 FieldTable::new(),
-            ).and_then(move |_| channel.basic_consume(
+            ).map(|queue| (channel, queue)))
+            .and_then(|(channel, queue)| channel.basic_consume(
                 &queue,
                 "",
                 BasicConsumeOptions::default(),
-                FieldTable::new(),
-            ).and_then(move |stream| stream.for_each(move |message| {
-                debug!("Incoming message received from AMQP with a delivery tag of {}.", &message.delivery_tag);
-                let decoded = std::str::from_utf8(&message.data).unwrap();
-                tokio::spawn({
-                    callback(decoded);
-                    futures::future::ok(())
-                });
-                channel.basic_ack(message.delivery_tag, false)
-            })))
-        }).map_err(Error::from)
+                FieldTable::new()
+            ).map(|consumer| (channel, consumer)))
+            .and_then(move |(channel, consumer)| {
+                consumer.for_each(move |message| {
+                    tx.unbounded_send(message.data).expect("Failed to send message to stream");
+                    channel.basic_ack(message.delivery_tag, false)
+                })
+            })
+            .map_err(|err| {
+                error!("Failed to consume event: {:?}", err);
+            }));
+
+        AmqpConsumer::new(rx)
     }
 }

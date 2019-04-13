@@ -9,21 +9,22 @@ use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
 fn main() {
     let addr = var("AMQP_URL").expect("No AMQP server address found.");
     // Just like the consumer, we initialize our producer.
-    let connect = AmqpBroker::new(&addr, "test".to_string(), None)
-    .and_then(|broker| {
+    let connect = AmqpBroker::new(addr, "test".to_string(), None)
+        .map_err(|err| {
+            eprintln!("Failed to initialize broker. {:?}", err);
+        });
+    let producer = connect.and_then(|broker| {
         // Here, we will publish an event with a name of HELLO to the message broker, and a basic content type for our AMQP properties.
         // We create a mock JSON string to send to replicate a real-world JSON payload.
-        let json = r#"{"message": "Example Publish."}"#.as_bytes();
-        broker.publish(
-            "HELLO",
-            json.to_vec(),
-            AmqpProperties::default().with_content_type("application/json".to_string()),
-        )
+        let json = b"{'message': 'Example Publish.'}";
+        let props = AmqpProperties::default().with_content_type("application/json".to_string());
+        broker.publish("HELLO", json.to_vec(), props).map_err(|err| {
+            eprintln!("An error was encountered during publish: {}", err);
+        })
     }).map(|_| {
         println!("Message publish succeeded, check the other window!");
-    }).map_err(|err| {
-        eprintln!("An error was encountered during publish: {}", err);
+        std::process::exit(0);
     });
 
-    tokio::run(connect);
+    tokio::run(producer);
 }
