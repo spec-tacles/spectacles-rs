@@ -2,7 +2,7 @@
 name = "spectacles-rest"
 description = "A Spectacles REST client for Rust."
 repository = "https://github.com/spec-tacles/spectacles-rs"
-version = "0.2.0"
+version = "0.1.0"
 authors = ["Texlo-Dev <richrancy@gmail.com>"]
 edition = "2018"
 
@@ -24,4 +24,4 @@ tokio = "0.1.16"
 http = "0.1.16"
 parking_lot = "0.7.1"
 hashbrown = "0.2.0"
-spectacles-model = { path = "../models", version = "0.1.3" }
+spectacles-model = { path = "../models", version = "0.2.0" }

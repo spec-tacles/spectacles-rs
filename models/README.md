@@ -1,3 +1,7 @@
+[![crates-io-badge]][crates-io-link]
+![Downloads](https://img.shields.io/crates/d/spectacles-model.svg?style=for-the-badge)
+[![docs-badge]][docs-link]
+
 # Spectacles Models
 A collection of data types for working with various Spectacles modules.
 
@@ -18,3 +22,9 @@ fn main() {
     let guild: Guild = serde_json::from_str(&example_json).expect("Failed to deserialize JSON");
 }
 ```
+
+
+[crates-io-link]: https://crates.io/crates/spectacles-model
+[crates-io-badge]: https://img.shields.io/crates/v/spectacles-model.svg?style=for-the-badge
+[docs-link]: https://docs.rs/spectacles-model
+[docs-badge]: https://img.shields.io/badge/Documentation-docs.rs-red.svg?style=for-the-badge

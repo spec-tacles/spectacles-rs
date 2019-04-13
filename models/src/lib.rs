@@ -2,12 +2,8 @@
 
 #[macro_use] extern crate serde_derive;
 
-pub use user::User;
 pub use snowflake::*;
-
-#[derive(Serialize)]
-pub struct NoQuery;
-
+pub use user::User;
 
 mod user;
 pub mod guild;

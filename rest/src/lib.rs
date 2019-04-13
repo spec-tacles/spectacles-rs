@@ -1,4 +1,69 @@
-#![feature(futures_api, async_await, await_macro)]
+//! # Spectacles REST
+//! Spectacles REST offers a simple, easy-to-use client for making HTTP requests to the Discord API.
+//! All HTTP requests are made asynchronously and never block the thread, with the help of the Tokio runtime.
+//!
+//! ## Creating a Client
+//! A [`RestClient`], resoponsible for performing all requests, can be easily constructed with the `new` function.
+//! ```rust
+//! use spectacles_rest::RestClient;
+//! let token = std::env::var("DISCORD_TOKEN").expect("Failed to parse token");
+//! let rest = RestClient::new(token, true);
+//! ```
+//! The client accepts a boolean as a second parameter, which determines whether or not the internal rate limiter will be used on each request.
+//!
+//! ## Views
+//! The Client ships with three views for specific endpoints of the Discord API.
+//!
+//! The [`ChannelView`] provides a set of methods for interacting with a Discord channel.
+//!
+//! The [`GuildView`] provides a set of methods for interacting with a Discord guild, or "server".
+//!
+//! The [`WebhookView`] provides a set of methods for interacting with Discord webhooks.
+//!
+//! [`ChannelView`]: struct.ChannelView.html
+//! [`GuildView`]: struct.GuildView.html
+//! [`WebhookView`]: struct.WebhookView.html
+//! [`RestClient`]: struct.RestClient.html
+//!
+//! Here is a brief example of sending a message to a Discord channel using the ChannelView.
+//! ```rust, norun
+//! use tokio::prelude::*;
+//! use spectacles_rest::RestClient;
+//! use spectacles_model::Snowflake;
+//!
+//! fn main() {
+//!     // Initialize the Rest Client, with a token.
+//!     let rest = RestClient::new(token, true);
+//!     tokio::run(rest.channel(&Snowflake(CHANNEL_ID_HERE)).create_message("Hello World")
+//!         .map(|message| println!("Message Sent: {:?}", message))
+//!         .map_err(|err| {
+//!             eprintln!("Error whilst attempting to send message. {:?}", err);
+//!         })
+//!     );
+//! }
+//! ```
+//! ## Rate Limiting
+//! As mentioned earlier, the library includes an in-memory rate limiter bucket system for preemptively managing Discord Ratelimits.
+//! This is sufficient if you do not plan on accessing the Discord API from a single server.
+//! If you plan to make requests in a distributed fashion, you will need to make use of an external state for keeping track of rate limits.
+//!
+//! The library currently supports using a custom Discord proxy, featured in the Spectacles client, to be used as a central hub for handling requests.
+//! ```rust
+//! use spectacles_rest::RestClient;
+//! let proxy = std::env::var("PROXY").expect("Failed to parse proxy URL.");
+//! let rest = RestClient::new(token, false) // false tells the client to skip the default in memory rate limiter.
+//!     .set_proxy(proxy);
+//!
+//! ```
+//! More rate limiting strategies will be considered in future.
+//!
+//!
+//! ## Installation
+//! Simply add the package to your Cargo.toml file.
+//! ```toml
+//! [dependencies]
+//! spectacles-rest = "0.1.0"
+
 
 #[macro_use]
 extern crate log;

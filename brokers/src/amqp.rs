@@ -124,15 +124,14 @@ impl AmqpBroker {
     /// See [here](https://docs.rs/amq-protocol/1.2.0/amq_protocol/protocol/basic/struct.AMQPProperties.html) for more details on the various AMQP properties.
     ///
     /// # Example
+    /// -- snip --
     /// ```rust,norun
     /// AmqpBroker::new(AMQP_URI, "mygroup".to_string(), None)
-    ///    .and_then(|broker| {
-    ///         broker.publish(
-    ///             "MESSAGE_CREATE",
-    ///             "{"content": "Hi"}".as_bytes().to_vec(),
-    ///             AmqpProperties::default().with_content_type("application/json")
-    ///         )
-    ///     })
+    ///    .and_then(|broker| broker.publish(
+    ///          "MESSAGE_CREATE",
+    ///          b"{'content': 'Hi'}".to_vec(),
+    ///          AmqpProperties::default().with_content_type("application/json")
+    ///     ))
     /// ```
     ///
     pub fn publish(&self, evt: &str, payload: Vec<u8>, properties: AmqpProperties) -> impl Future<Item=Option<u64>, Error=Error> {
@@ -149,16 +148,16 @@ impl AmqpBroker {
     /// Attempts to consume the provided event. Returns a stream, which is populated with each incoming AMQP message.
     /// # Example
     /// ```rust,norun
+    /// -- snip --
     /// AmqpBroker::new(addr, "mygroup", None)
-    ///    .and_then(|broker| {
-    ///         broker.consume("MESSAGE_CREATE").for_each(|payload| {
-    ///             println!("Message Event Received: {}", payload);
+    ///    .and_then(|broker| broker.consume("MESSAGE_CREATE"))
+    ///    .for_each(|message| { // Poll the consumer stream.
+    ///         println!("Message Event Received: {}", payload);
     ///
-    ///             Ok(())
-    ///         })
+    ///         Ok(())
     ///     })
-    ///     .map(|_| {
-    ///         println!("Successfully consumed queue.");
+    ///     .map_err(|err| {
+    ///         eprintln!("Failed to consume queue. {:?}", err);
     ///     })
     /// ```
     ///
