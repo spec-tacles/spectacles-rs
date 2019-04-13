@@ -121,7 +121,7 @@ impl RatelimitServer {
                         *new_req.headers_mut() = new_headers;
 
                         enqueue(route.clone(), Arc::clone(&current_state.ratelimiter))
-                            .and_then(move |_| hyper_reverse_proxy::call(remote_addr.ip(), &current_state.proxy_url, new_req).from_err())
+                            .and_then(move |_| proxy::call(remote_addr.ip(), &current_state.proxy_url, new_req).from_err())
                             .and_then(|resp| process_response(route, resp, resp_state))
                             .map(|status| match status {
                                 ResponseStatus::Success(resp) => Loop::Break(resp),

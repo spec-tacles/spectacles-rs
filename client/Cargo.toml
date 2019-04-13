@@ -13,7 +13,6 @@ license = "MIT"
 serde = "1.0.89"
 serde_json = { version = "1.0.39", features = ["raw_value"] }
 serde_derive = "1.0.89"
-hyper-reverse-proxy = { git = "https://github.com/spec-tacles/hyper-reverse-proxy" }
 regex = "1.1.5"
 chrono = "0.4.6"
 parking_lot = "0.7.1"
@@ -25,6 +24,7 @@ env_logger = "0.6.1"
 log = "0.4.6"
 kankyo = "0.2.0"
 futures = "0.1.25"
+spectacles-proxy = { path = "../proxy", version = "0.4.0" }
 spectacles-gateway = { path = "../gateway", version = "0.3.0" }
 spectacles-brokers = { path = "../brokers", version = "1.1.5" }
 spectacles-model = { path = "../models", version = "0.2.0" }
