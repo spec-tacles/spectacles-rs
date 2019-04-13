@@ -1,4 +1,9 @@
-# spectacles-gateway
+[![crates-io-badge]][crates-io-link]
+![Downloads](https://img.shields.io/crates/d/spectacles-gateway.svg?style=for-the-badge)
+[![docs-badge]][docs-link]
+
+
+# Spectacles Gateway
 A rich Spectacles Gateway client for Rust.
 
 ## About
@@ -9,7 +14,7 @@ This crate allows you to interact with the Discord gateway. Please refer to the 
 - Integrates seamlessly with the spectacles-brokers package.
 
 
-## Example
+## Example - Basic spawner
 ```rust,norun
 #![feature(futures_api, async_await, await_macro)]
 #[macro_use] extern crate tokio;
@@ -42,3 +47,8 @@ fn main() {
 }
 
 ```
+
+[crates-io-link]: https://crates.io/crates/spectacles-gateway
+[crates-io-badge]: https://img.shields.io/crates/v/spectacles-gateway.svg?style=for-the-badge
+[docs-link]: https://docs.rs/spectacles-gateway
+[docs-badge]: https://img.shields.io/badge/Documentation-docs.rs-red.svg?style=for-the-badge

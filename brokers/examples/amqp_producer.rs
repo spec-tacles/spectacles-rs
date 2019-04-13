@@ -10,7 +10,6 @@ use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
 // This example is meant to be ran with the consumer example provided in this folder.
 fn main() {
     // Here, we run our async function on the Tokio executor.
-    // tokio::run_async(try_main());
     tokio::run_async(async {
         let addr = var("AMQP_URL").expect("No AMQP server address found");
         let publish_count = var("COUNT").expect("No count detected").parse::<i32>().expect("invalid integer");

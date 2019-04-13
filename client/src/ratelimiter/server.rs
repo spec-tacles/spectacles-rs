@@ -76,6 +76,7 @@ impl RatelimitServer {
             let loop_url = parent_url.clone();
 
             service_fn(move |req: Request<Body>| {
+                info!("Incoming Request - \"{:?} {:?} {:?}\"", *req.method(), *req.uri(), req.version());
                 let (parts, body) = req.into_parts();
                 let orig_state = Arc::new(RequestState {
                     ratelimiter: Arc::clone(&loop_state),
@@ -113,7 +114,10 @@ impl RatelimitServer {
                         if old_headers.contains_key("User-Agent") {
                             new_headers.insert("User-Agent", old_headers["User-Agent"].clone());
                         };
-                        new_headers.insert("Content-Type", old_headers["Content-Type"].clone());
+                        if old_headers.contains_key("Content-Type") {
+                            new_headers.insert("Content-Type", old_headers["Content-Type"].clone());
+                        };
+
                         *new_req.headers_mut() = new_headers;
 
                         enqueue(route.clone(), Arc::clone(&current_state.ratelimiter))
@@ -149,17 +153,17 @@ pub fn enqueue(path: String, state: Arc<RatelimitState>) -> Box<Future<Item=(), 
     if global.lock().is_some() {
         let global = global.lock().take().unwrap();
         let duration = global.sub(Utc::now()).to_std().unwrap();
-        warn!("Reached global ratelimit, slowing down request.");
+        warn!("Global ratelimit reached - slowing down requests.");
 
         Box::new(Delay::new(Instant::now() + duration).map_err(Error::from))
     } else if bucket.lock().remaining <= 0 {
         let ready = bucket.lock().take();
         match ready {
             Some(_) => {
-                warn!("Reached route-level ratelimit, slowing down request.");
+                warn!("Route-level rate limit reached - pausing requests.");
                 let bkt = Arc::clone(&bucket);
                 let reset = bkt.lock().reset.unwrap();
-                let duration = reset.sub(Utc::now()).to_std().unwrap();
+                let duration = reset.sub(Utc::now()).to_std().unwrap_or(Duration::from_secs(0));
                 Box::new(Delay::new(Instant::now() + duration)
                     .map_err(Error::from)
                     .map(move |_| {

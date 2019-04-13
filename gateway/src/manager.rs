@@ -167,7 +167,7 @@ impl ShardManager {
                 );
                 tx.unbounded_send(shard).expect("Failed to send shard to stream");
             };
-            info!("All shards have completed spawn.");
+            info!("Sharder has completed spawning shards.");
         });
         let event_handle = self.start_event_stream();
 

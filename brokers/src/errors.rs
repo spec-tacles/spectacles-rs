@@ -58,7 +58,6 @@ impl From<Utf8Error> for Error {
     }
 }
 
-
 impl From<IoError> for Error {
     fn from(err: IoError) -> Self {
         Error::Io(err)

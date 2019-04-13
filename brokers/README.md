@@ -1,4 +1,6 @@
-![Crates.io](https://img.shields.io/crates/v/spectacles-brokers.svg?style=for-the-badge) ![Crates.io](https://img.shields.io/crates/l/spectacles-brokers.svg?color=orange&style=for-the-badge) ![Crates.io](https://img.shields.io/crates/d/spectacles-brokers.svg?style=for-the-badge)
+[![crates-io-badge]][crates-io-link]
+![Downloads](https://img.shields.io/crates/d/spectacles-brokers.svg?style=for-the-badge)
+[![docs-badge]][docs-link]
 
 # spectacles-brokers
 
@@ -32,3 +34,8 @@ fn main() {
 ```
 
 More examples can be found in the [`examples`] directory.
+
+[crates-io-link]: https://crates.io/crates/spectacles-brokers
+[crates-io-badge]: https://img.shields.io/crates/v/spectacles-brokers.svg?style=for-the-badge
+[docs-link]: https://docs.rs/spectacles-brokers
+[docs-badge]: https://img.shields.io/badge/Documentation-docs.rs-red.svg?style=for-the-badge

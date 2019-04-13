@@ -1,3 +1,8 @@
+[![crates-io-badge]][crates-io-link]
+![Downloads](https://img.shields.io/crates/d/spectacles.svg?style=for-the-badge)
+[![docs-badge]][docs-link]
+
+
 # Spectacles Client
 A standalone application for handling specific Spectacles tasks.
 
@@ -73,3 +78,8 @@ OPTIONS:
 The following environment variables are supported.
 
 `SERVER_ADDR`: The Socket address in which to listen the HTTP server on.
+
+[crates-io-link]: https://crates.io/crates/spectacles
+[crates-io-badge]: https://img.shields.io/crates/v/spectacles.svg?style=for-the-badge
+[docs-link]: https://docs.rs/spectacles
+[docs-badge]: https://img.shields.io/badge/Documentation-docs.rs-red.svg?style=for-the-badge

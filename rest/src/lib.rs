@@ -1,3 +1,69 @@
+//! # Spectacles REST
+//! Spectacles REST offers a simple, easy-to-use client for making HTTP requests to the Discord API.
+//! All HTTP requests are made asynchronously and never block the thread, with the help of the Tokio runtime.
+//!
+//! ## Creating a Client
+//! A [`RestClient`], resoponsible for performing all requests, can be easily constructed with the `new` function.
+//! ```rust
+//! use spectacles_rest::RestClient;
+//! let token = std::env::var("DISCORD_TOKEN").expect("Failed to parse token");
+//! let rest = RestClient::new(token, true);
+//! ```
+//! The client accepts a boolean as a second parameter, which determines whether or not the internal rate limiter will be used on each request.
+//!
+//! ## Views
+//! The Client ships with three views for specific endpoints of the Discord API.
+//! The [`ChannelView`] provides a set of methods for interacting with a Discord channel.
+//! The [`GuildlView`] provides a set of methods for interacting with a Discord guild, or "server".
+//! The [`WebhookView`] provides a set of methods for interacting with Discord webhooks.
+//!
+//! [`ChannelView`]: struct.ChannelView.html
+//! [`GuildView`]: struct.GuildView.html
+//! [`WebhookView`]: struct.WebhookView.html
+//! [`RestClient`]: struct.RestClient.html
+//!
+//! Here is a brief example of sending a message to a Discord channel using the ChannelView.
+//! ```rust
+//! #![feature(futures_api, async_await, await_macro)]
+//! #[macro_use] extern crate tokio;
+//! use spectacles_rest::RestClient;
+//! use spectacles_model::Snowflake;
+//!
+//! fn main() {
+//!     // ~snip~
+//!     // Initialize the Rest Client, with a token.
+//!     let rest = RestClient::new(token, true);
+//!     tokio::run_async(async {
+//!         // We create a Snowflake object from an ID that we provide, passing it to the ChannelView.
+//!         await!(rest.channel(&Snowflake(CHANNEL_ID_HERE)).create_message("Hello World."))
+//!             .expect("Failed to send message to Discord");
+//!     });
+//! }
+//! ```
+//! ## Rate Limiting
+//! As mentioned earlier, the library includes an in-memory rate limiter bucket system for preemptively managing Discord Ratelimits.
+//! This is sufficient if you do not plan on accessing the Discord API from a single server.
+//! If you plan to make requests in a distributed fashion, you will need to make use of an external state for keeping track of rate limits.
+//! The library currently supports using a custom Discord proxy, featured in the Spectacles client, to be used as a central hub for handling requests.
+//! ```rust
+//! use spectacles_rest::RestClient;
+//! let proxy = std::env::var("PROXY").expect("Failed to parse proxy URL.");
+//! let rest = RestClient::new(token, false) // false tells the client to skip the default in memory rate limiter.
+//!     .set_proxy(proxy);
+//!
+//! ```
+//! More rate limiting strategies will be considered in future.
+//!
+//!
+//! ## Installation
+//! Simply add the package to your Cargo.toml file.
+//! ```toml
+//! [dependencies]
+//! spectacles-rest = "0.1.0"
+//! ```
+//!
+//! ```
+
 #![feature(futures_api, async_await, await_macro)]
 
 #[macro_use]
@@ -87,9 +153,9 @@ impl RestClient {
         rest
     }
 
-    /// Changes the base URL for all requests that are made to the Discord API.
-    /// Here, you may specify a URL to an HTTP ratelimiter proxy.
-    pub fn set_base_url(mut self, url: String) -> Self {
+    /// Enables support for routing all requests though an HTTP rate limiting proxy.
+    /// If you plan on making distributed REST requests, an HTTP proxy is recommended for handling rate limits in a distributed manner.
+    pub fn set_proxy(mut self, url: String) -> Self {
         self.base_url = url;
         self
     }
@@ -117,7 +183,7 @@ impl RestClient {
         ))
     }
 
-    /// Opens a new DM channel with the provided user ID.
+    /// Opens a new DM channel with the user at the provided user ID.
     pub fn create_dm(&self, user: &Snowflake) -> impl Future<Item=Channel, Error=Error> {
         let json = json!({
             "recipient_id": user.0
