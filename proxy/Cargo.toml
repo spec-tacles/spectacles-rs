@@ -9,7 +9,6 @@ documentation = "https://docs.rs/hyper-reverse-proxy"
 repository = "https://github.com/felipenoris/hyper-reverse-proxy"
 keywords = ["http", "hyper"]
 categories = ["network-programming", "web-programming"]
-readme = "README.md"
 edition = "2018"
 
 [dependencies]
