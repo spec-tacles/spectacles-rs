@@ -19,14 +19,10 @@ fn main () {
 
     match argv::get_args().subcommand() {
         ("shard", Some(matches)) => {
-            sharder::parse_args(matches).unwrap_or_else(|err| {
-                error!("Failed at spawning shards. {:?}", err);
-            });
+            sharder::parse_args(matches).expect("Failed to bootstrap sharder");
         },
         ("ratelimit", Some(matches)) => {
-            ratelimiter::bootstrap(matches).unwrap_or_else(|err| {
-                error!("Failed to bootstrap rate limiter service. {:?}", err);
-            });
+            ratelimiter::bootstrap(matches).expect("Failed to bootstrap rate limiter service");
         },
         _ => {}
     }

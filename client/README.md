@@ -1,10 +1,14 @@
+[![crates-io-badge]][crates-io-link]
+![Downloads](https://img.shields.io/crates/d/spectacles.svg?style=for-the-badge)
+[![docs-badge]][docs-link]
+
 # Spectacles Client
 A standalone application for handling specific Spectacles tasks.
 
 ## Current Features
 - Spawning Discord shards.
-- Publishing Discord events to a message broker (AMQP)
-- (WIP) Ratelimiter Proxy.
+- Publishing Discord events to a message broker.
+- HTTP rate limiter proxy.
 
 ## Sharding
 This application features a built-in sharder which can publish all events received from the Discord API to a message broker.
@@ -46,3 +50,8 @@ You may also provide the following environment variables.
 `DISCORD_TOKEN`: The token of the bot that you wish to use to spawn shards.
 
 `SHARD_COUNT`: The amount of shards to spawn.
+
+[crates-io-link]: https://crates.io/crates/spectacles
+[crates-io-badge]: https://img.shields.io/crates/v/spectacles.svg?style=for-the-badge
+[docs-link]: https://docs.rs/spectacles
+[docs-badge]: https://img.shields.io/badge/Documentation-docs.rs-red.svg?style=for-the-badge

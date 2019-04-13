@@ -4,7 +4,9 @@ use std::net::SocketAddr;
 
 use clap::ArgMatches;
 
-use crate::errors::Error;
+use crate::errors::*;
+
+use self::server::RatelimitServer;
 
 pub mod server;
 pub mod bucket;
@@ -16,7 +18,7 @@ pub struct RatelimitOptions {
     pub config_path: Option<String>,
 }
 
-pub fn bootstrap(results: &ArgMatches) -> Result<(), Error> {
+pub fn bootstrap(results: &ArgMatches) -> Result<()> {
     let options = if results.value_of("config_path").is_some() || env::var("CONFIG_FILE_PATH").is_ok() {
         let path = results.value_of("CONFIG_PATH")
             .map(|s| s.to_string())
@@ -26,12 +28,13 @@ pub fn bootstrap(results: &ArgMatches) -> Result<(), Error> {
         parse_argv(results)?
     };
 
-    server::start_server(options);
+    let server = RatelimitServer::new(options);
+    server.start();
 
     Ok(())
 }
 
-fn parse_config_file(path: String) -> Result<RatelimitOptions, Error> {
+fn parse_config_file(path: String) -> Result<RatelimitOptions> {
     let file = fs::read_to_string(path)?;
 
     if file.ends_with(".json") {
@@ -43,16 +46,15 @@ fn parse_config_file(path: String) -> Result<RatelimitOptions, Error> {
     }
 }
 
-pub fn parse_argv(args: &ArgMatches) -> Result<RatelimitOptions, Error> {
+pub fn parse_argv(args: &ArgMatches) -> Result<RatelimitOptions> {
     let address = args.value_of("server_address")
         .map(String::from)
         .unwrap_or(env::var("SERVER_ADDR").expect("No server was provided in a config file, command line argument or environment variable."));
     let address = address.parse::<SocketAddr>()?;
 
-
     Ok(RatelimitOptions {
         address,
-        url: String::from("https://discordapp.com/api/v7"),
+        url: String::from("https://discordapp.com"),
         config_path: None,
     })
 }

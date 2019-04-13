@@ -2,16 +2,19 @@ use std::{
     env,
     fs
 };
+use std::sync::Arc;
 
 use clap::ArgMatches;
 use futures::future::Future;
-use tokio::runtime::current_thread;
+use serde_json::value::RawValue;
+use tokio::prelude::*;
 
 use spectacles_brokers::amqp::{AmqpBroker, AmqpProperties};
-use spectacles_gateway::{EventHandler, ManagerOptions, Shard, ShardManager, ShardStrategy};
-use spectacles_model::gateway::{ReceivePacket, RequestGuildMembers, UpdateStatus, UpdateVoiceState};
+use spectacles_gateway::{ShardManager, ShardStrategy};
+use spectacles_model::gateway::{RequestGuildMembers, SendPacket, UpdateStatus, UpdateVoiceState};
+use spectacles_model::snowflake::Snowflake;
 
-use crate::errors::{Error as MyError, Error};
+use crate::errors::*;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SpawnerOptions {
@@ -23,65 +26,15 @@ pub struct SpawnerOptions {
     config_path: Option<String>
 }
 
-pub struct Handler {
-    broker: AmqpBroker
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SpecGatewayMessage<'a> {
+    pub guild_id: Snowflake,
+    #[serde(borrow)]
+    pub packet: &'a RawValue,
 }
 
-impl EventHandler for Handler {
-    fn on_shard_ready(&self, shard: &mut Shard) {
-        let broker = self.broker.clone();
-        let shard_num = shard.info[0].clone().to_string();
 
-        tokio::spawn(broker.subscribe(shard_num, {
-            let shard = shard.clone();
-            move |payload| {
-                if let Ok(packet) = serde_json::from_str::<UpdateStatus>(payload) {
-                    let _ = shard.send_payload(packet).map_err(|err| {
-                        error!("Failed to send packet to the gateway. {:?}", err);
-                    });
-                };
-                if let Ok(packet) = serde_json::from_str::<RequestGuildMembers>(payload) {
-                    let _ = shard.send_payload(packet).map_err(|err| {
-                        error!("Failed to send packet to the gateway. {:?}", err);
-                    });
-                };
-                if let Ok(packet) = serde_json::from_str::<UpdateVoiceState>(payload) {
-                    let _ = shard.send_payload(packet).map_err(|err| {
-                        error!("Failed to send packet to the gateway. {:?}", err);
-                    });
-                };
-            }
-        }).map_err(|err| {
-            error!("Failed to subscribe to the shard stream. {}", err);
-        }));
-    }
-
-    fn on_packet(&self, shard: &mut Shard, packet: ReceivePacket) {
-        let info = shard.info.clone();
-        match packet.t {
-            Some(event) => {
-                let evt = event.to_string();
-                let broker = &self.broker;
-                let payload = packet.d.get().as_bytes().to_vec();
-                current_thread::spawn({
-                    broker.publish(
-                        evt.as_ref(),
-                        payload,
-                        AmqpProperties::default().with_content_type("application/json".to_string()),
-                    ).map(move |_| {
-                        info!("Sent event: {} by Shard {} to AMQP.", event, info[0]);
-                    }).map_err(|err| {
-                        error!("Failed to publish event to the AMQP broker. {}", err);
-                    })
-                });
-            },
-            None => {}
-        };
-
-    }
-}
-
-pub fn start_sharder(config: SpawnerOptions) -> impl Future<Item=(), Error=MyError> {
+pub fn start_sharder(config: SpawnerOptions) -> impl Future<Item=(), Error=Error> {
     let amqp_url = config.amqp_url.clone();
     let group = config.amqp_group.clone();
     let subgroup = config.amqp_subgroup.clone();
@@ -90,19 +43,78 @@ pub fn start_sharder(config: SpawnerOptions) -> impl Future<Item=(), Error=MyErr
         Some(r) => ShardStrategy::SpawnAmount(r),
         None => ShardStrategy::Recommended
     };
-    let amqpconn = AmqpBroker::new(&amqp_url, group, subgroup);
-    let sharder = amqpconn.map_err(MyError::from)
-        .and_then(move |broker| {
-            ShardManager::new(token, ManagerOptions {
-                strategy: shard_count,
-                handler: Handler { broker }
-            }).map_err(MyError::from)
-        });
-    sharder.map(|manager| manager.begin_spawn())
-        .from_err()
+    let amqp = AmqpBroker::new(amqp_url, group, subgroup).from_err();
+    let sharder = ShardManager::new(token, shard_count).from_err();
+
+    amqp.join(sharder).map(|(broker, mut manager)| {
+        info!("Sharder has completed bootstrap - spawning shards.");
+        let broker = Arc::new(broker);
+        let (spawner, events) = manager.start_spawn();
+
+        let broker_1 = Arc::clone(&broker);
+        tokio::spawn(spawner.for_each(move |shard| {
+            info!("Shard {:?} has successfully spawned.", shard.lock().info);
+            let shard_num = shard.lock().info[0].to_string();
+
+            broker_1.consume(&shard_num).for_each(move |message| {
+                let status = serde_json::from_slice::<SendPacket<UpdateStatus>>(&message);
+                let guild_members = serde_json::from_slice::<SendPacket<RequestGuildMembers>>(&message);
+                let voice_state = serde_json::from_slice::<SendPacket<UpdateVoiceState>>(&message);
+
+                if let Ok(packet) = status {
+                    shard.lock().send_payload(packet.d).unwrap_or_else(|err| {
+                        error!("Failed to send packet to the gateway. {:?}", err);
+                    });
+                } else if let Ok(packet) = guild_members {
+                    shard.lock().send_payload(packet.d).unwrap_or_else(|err| {
+                        error!("Failed to send packet to the gateway. {:?}", err);
+                    });
+                } else if let Ok(packet) = voice_state {
+                    shard.lock().send_payload(packet.d).unwrap_or_else(|err| {
+                        error!("Failed to send packet to the gateway. {:?}", err);
+                    });
+                };
+
+                Ok(())
+            })
+        }));
+
+        let broker_2 = Arc::clone(&broker);
+        tokio::spawn(events.for_each(move |event| {
+            let props = AmqpProperties::default().with_content_type("application/json".to_string());
+            if let Some(name) = event.packet.t {
+                let payload = event.packet.d.get().as_bytes().to_vec();
+                let event = name.to_string();
+
+                tokio::spawn(broker_2.publish(&event, payload, props.clone())
+                    .map(|_| ())
+                    .map_err(|err| {
+                        error!("Failed to publish shard event to AMQP: {:?}", err);
+                    })
+                );
+            };
+
+            Ok(())
+        }));
+
+        let broker_3 = Arc::clone(&broker);
+        let shard_count = manager.total_shards as u64;
+        tokio::spawn(broker_3.consume("SEND").for_each(move |payload| {
+            let message: SpecGatewayMessage = serde_json::from_slice(&payload)
+                .expect("Failed to deserialize gateway message");
+            let shard_id = (message.guild_id.0 >> 22) % shard_count;
+            let shard_str = shard_id.to_string();
+            let json = message.packet.get().as_bytes().to_vec();
+            let props = AmqpProperties::default().with_content_type("application/json".to_string());
+
+            broker_3.publish(&shard_str, json, props).map(|_| ()).map_err(|err| {
+                error!("Failed to publish shard message - {:?}", err);
+            })
+        }));
+    })
 }
 
-pub fn parse_args(results: &ArgMatches) -> Result<(), MyError> {
+pub fn parse_args(results: &ArgMatches) -> Result<()> {
     let cfg = if results.value_of("config_path").is_some() || env::var("CONFIG_FILE_PATH").is_ok() {
         let path = results.value_of("CONFIG_PATH")
             .map(|s| s.to_string())
@@ -112,14 +124,15 @@ pub fn parse_args(results: &ArgMatches) -> Result<(), MyError> {
         parse_argv(results)?
     };
 
-    current_thread::run(start_sharder(cfg).map_err(|err| {
-        error!("Failed to spawn Discord shards. {}", err);
+    let future = start_sharder(cfg);
+    tokio::run(future.map_err(|err| {
+        error!("An error occured while sharding. {:?}", err);
     }));
 
     Ok(())
 }
 
-fn parse_argv(results: &ArgMatches) -> Result<SpawnerOptions, Error> {
+fn parse_argv(results: &ArgMatches) -> Result<SpawnerOptions> {
     let amqp_url = results.value_of("url").map(String::from)
         .unwrap_or(env::var("AMQP_URL").expect("No AMQP URL provided in arguments or ENV."));
     let amqp_group = results.value_of("group").map(String::from)
@@ -158,7 +171,7 @@ fn parse_argv(results: &ArgMatches) -> Result<SpawnerOptions, Error> {
     })
 }
 
-fn parse_config_file(path: String) -> Result<SpawnerOptions, Error> {
+fn parse_config_file(path: String) -> Result<SpawnerOptions> {
     let file = fs::read_to_string(path)?;
 
     if file.ends_with(".json") {
