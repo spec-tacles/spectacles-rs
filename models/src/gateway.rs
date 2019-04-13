@@ -1,19 +1,24 @@
 //! Structs representing the various elements of the Discord gateway.
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use serde_json::Error as JsonError;
+use serde_json::{
+    Error as JsonError,
+    value::RawValue,
+};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
     guild::UnavailableGuild,
-    presence::{Activity, ClientPresence},
+    presence::{ClientActivity, ClientPresence},
     Snowflake,
     User
 };
+use crate::presence::Status;
 
 /// Denotes structs that can be sent to the gateway.
 pub trait SendablePacket {
     fn to_json(self) -> Result<String, JsonError>;
+    fn bytes(self) -> Result<Vec<u8>, JsonError>;
 }
 
 /// Returns useful information about the application from the gateway.
@@ -39,24 +44,50 @@ pub struct SessionStartLimit {
 
 /// A JSON packet that the client would receive over the Discord gateway.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ReceivePacket<'a> {
+pub struct ReceivePacket {
     /// The opcode for this payload.
     pub op: Opcodes,
     /// The JSON value for this payload.
-    #[serde(borrow)]
-    pub d: &'a serde_json::value::RawValue,
+    pub d: Box<RawValue>,
     pub s: Option<u64>,
     /// The name of the event that was fired, if applicable.
     pub t: Option<GatewayEvent>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-/// A JSON packet that the client would send over the Discord Gateway.
+/// A JSON packet that the client would send to the Discord Gateway.
 pub struct SendPacket<T: SendablePacket> {
     /// The opcode for this packet.
     pub op: Opcodes,
     /// The JSON data for this packet.
     pub d: T
+}
+
+/// A message, sent to a message broker, which contains the packet to be sent to the Discord gateway.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GatewayBrokerMessage {
+    /// The guild ID of which to calculate the shard ID from.
+    pub guild_id: Snowflake,
+    /// The packet, as a raw JSON value.
+    pub packet: Box<RawValue>,
+}
+
+impl GatewayBrokerMessage {
+    /// Creates a new gateway broker message.
+    pub fn new<T: SendablePacket>(guild_id: Snowflake, packet: T) -> Result<Self, JsonError> {
+        let raw = RawValue::from_string(packet.to_json()?)?;
+
+        Ok(Self {
+            guild_id,
+            packet: raw,
+        })
+    }
+    /// Converts the message to a byte vector, suitable for publishing to most message brokers.
+    pub fn as_bytes(&self) -> Result<Vec<u8>, JsonError> {
+        let json = serde_json::to_string(self)?;
+
+        Ok(json.as_bytes().to_vec())
+    }
 }
 
 /// Used for identifying a shard with the gateway.
@@ -123,11 +154,11 @@ pub struct HeartbeatPacket {
 /// A Request guild members packet.
 pub struct RequestGuildMembers {
     /// The guild ID to get members for.
-    guild_id: Snowflake,
+    pub guild_id: Snowflake,
     /// A string that the username starts with. If omitted, returns all members.
-    query: String,
+    pub query: String,
     /// The maximum number of members to send. If omitted, requests all members.
-    limit: i32
+    pub limit: i32
 }
 
 
@@ -135,26 +166,49 @@ pub struct RequestGuildMembers {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateVoiceState {
     /// The guild ID of the guild.
-    guild_id: Snowflake,
+    pub guild_id: Snowflake,
     /// The channel ID of the voice channel.
-    channel_id: Snowflake,
+    pub channel_id: Snowflake,
     /// Whether or not to mute the current user.
-    self_mute: bool,
+    pub self_mute: bool,
     /// Whether or not to deafen the current user.
-    self_deaf: bool
+    pub self_deaf: bool
 }
 
-/// A packet sent to indicate a status update.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+/// A packet sent to change the current status of the connected client.
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct UpdateStatus {
     /// Milliseconds since the client went idle.
-    since: Option<i32>,
+    pub since: Option<i32>,
     /// The activity object to set.
-    game: Option<Activity>,
+    pub game: Option<ClientActivity>,
     /// The status object to set.
-    status: String,
+    pub status: Status,
     /// Whether or not the client is AFK.
-    afk: bool
+    pub afk: bool
+}
+
+impl UpdateStatus {
+    /// Sets the activity for this packet.
+    pub fn game(mut self, activity: ClientActivity) -> Self {
+        self.game = Some(activity);
+
+        self
+    }
+
+    /// Sets the status for this packet.
+    pub fn status(mut self, status: Status) -> Self {
+        self.status = status;
+
+        self
+    }
+
+    /// Sets the AFK flag for this packet.
+    pub fn afk(mut self, afk: bool) -> Self {
+        self.afk = afk;
+
+        self
+    }
 }
 
 impl SendablePacket for UpdateStatus {
@@ -163,6 +217,12 @@ impl SendablePacket for UpdateStatus {
             op: Opcodes::StatusUpdate,
             d: self
         })
+    }
+
+    fn bytes(self) -> Result<Vec<u8>, JsonError> {
+        let json = self.to_json()?;
+
+        Ok(json.as_bytes().to_vec())
     }
 }
 
@@ -174,6 +234,12 @@ impl SendablePacket for IdentifyPacket {
             d: self
         })
     }
+
+    fn bytes(self) -> Result<Vec<u8>, JsonError> {
+        let json = self.to_json()?;
+
+        Ok(json.as_bytes().to_vec())
+    }
 }
 
 
@@ -184,6 +250,12 @@ impl SendablePacket for UpdateVoiceState {
             d: self,
         })
     }
+
+    fn bytes(self) -> Result<Vec<u8>, JsonError> {
+        let json = self.to_json()?;
+
+        Ok(json.as_bytes().to_vec())
+    }
 }
 impl SendablePacket for RequestGuildMembers {
     fn to_json(self) -> Result<String, JsonError> {
@@ -191,6 +263,12 @@ impl SendablePacket for RequestGuildMembers {
             op: Opcodes::RequestGuildMembers,
             d: self
         })
+    }
+
+    fn bytes(self) -> Result<Vec<u8>, JsonError> {
+        let json = self.to_json()?;
+
+        Ok(json.as_bytes().to_vec())
     }
 }
 
@@ -201,6 +279,12 @@ impl SendablePacket for HeartbeatPacket {
             d: self
         })
     }
+
+    fn bytes(self) -> Result<Vec<u8>, JsonError> {
+        let json = self.to_json()?;
+
+        Ok(json.as_bytes().to_vec())
+    }
 }
 
 impl SendablePacket for ResumeSessionPacket {
@@ -209,6 +293,12 @@ impl SendablePacket for ResumeSessionPacket {
             op: Opcodes::Resume,
             d: self
         })
+    }
+
+    fn bytes(self) -> Result<Vec<u8>, JsonError> {
+        let json = self.to_json()?;
+
+        Ok(json.as_bytes().to_vec())
     }
 }
 

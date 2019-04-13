@@ -1,3 +1,5 @@
+use chrono::{DateTime, Utc};
+
 /// Represents a Message Embed being sent.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct Embed {
@@ -15,7 +17,7 @@ pub struct Embed {
     pub url: Option<String>,
     /// The timestamp of the embed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<String>,
+    pub timestamp: Option<DateTime<Utc>>,
     /// The color of the embed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<i32>,
@@ -103,6 +105,20 @@ impl Embed {
         self.image = Some(img(EmbedImage::default()));
         self
     }
+
+    pub fn set_current_timestamp(mut self) -> Self {
+        self.timestamp = Some(chrono::Utc::now());
+
+        self
+    }
+
+    pub fn set_timestamp(mut self, time: DateTime<Utc>) -> Self {
+        self.timestamp = Some(time);
+
+        self
+    }
+
+
 }
 /// An Embed Footer data object.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -263,6 +279,13 @@ impl EmbedField {
 
     pub fn set_value(mut self, val: impl Into<String>) -> Self {
         self.value = val.into();
+        self
+    }
+
+    /// Sets the inline flag of this field.
+    pub fn set_inline(mut self, inline: bool) -> Self {
+        self.inline = Some(inline);
+
         self
     }
 }

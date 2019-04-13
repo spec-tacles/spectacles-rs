@@ -35,6 +35,87 @@ pub struct MessageReaction {
     pub emoji: Emoji
 }
 
+/// Query for getting the users who reacted to a message.
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct GetReactionsOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<Snowflake>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    after: Option<Snowflake>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<i32>,
+}
+
+impl GetReactionsOptions {
+    /// Get users before this message ID.
+    pub fn before(mut self, id: Snowflake) -> Self {
+        self.before = Some(id);
+        self
+    }
+
+    /// Get users after this message ID.
+    pub fn after(mut self, id: Snowflake) -> Self {
+        self.after = Some(id);
+        self
+    }
+
+    /// Sets the maximum # of users to return.
+    pub fn limit(mut self, num: i32) -> Self {
+        self.limit = Some(num);
+        self
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct CreateEmojiOptions {
+    name: String,
+    image: String,
+    roles: Vec<Snowflake>,
+}
+
+impl CreateEmojiOptions {
+    /// Sets the name of this emoji.
+    pub fn name(mut self, text: &str) -> Self {
+        self.name = text.to_string();
+        self
+    }
+
+    /// Sets the image for this emoji.
+    /// Discord requires that the image is base64 encoded, in the format listed [here.](https://discordapp.com/developers/docs/resources/user#avatar-data)
+    pub fn image(mut self, text: &str) -> Self {
+        self.image = text.to_string();
+        self
+    }
+
+    /// Sets the roles for which will this emoji will be whitelisted.
+    pub fn roles(mut self, rls: Vec<Snowflake>) -> Self {
+        self.roles = rls;
+        self
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ModifyEmojiOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    roles: Option<Vec<Snowflake>>,
+}
+
+impl ModifyEmojiOptions {
+    /// Sets the new name for this emoji.
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = Some(name.to_string());
+        self
+    }
+
+    /// Sets the roles for which will this emoji will be whitelisted.
+    pub fn roles(mut self, rls: Vec<Snowflake>) -> Self {
+        self.roles = Some(rls);
+        self
+    }
+}
+
 /// The gateway event emitted when a guild's emojis are updated.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GuildEmojisUpdate {

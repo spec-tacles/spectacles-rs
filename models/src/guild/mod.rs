@@ -1,4 +1,5 @@
 //! Structures related to Discord guilds.
+use chrono::{DateTime, FixedOffset};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::{
@@ -11,8 +12,9 @@ use crate::{
 use crate::snowflake::Snowflake;
 
 pub use self::{
+    audit_log::*,
     member::*,
-    role::*,
+    role::*
 };
 
 mod role;
@@ -107,6 +109,269 @@ pub struct UnavailableGuild {
     pub unavailable: bool
 }
 
+/// The embed object of a guild.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GuildEmbed {
+    /// Whether the embed is enabled.
+    pub enabled: bool,
+    /// The channel ID of the embed.
+    pub channel_id: Snowflake,
+}
+
+/// Options for modifying a guild embed.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ModifyGuildEmbedOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    channel_id: Option<Snowflake>,
+}
+
+impl ModifyGuildEmbedOptions {
+    /// Sets the enabled status of this embed.
+    pub fn enabled(mut self, opt: bool) -> Self {
+        self.enabled = Some(opt);
+        self
+    }
+
+    /// Sets the channel ID of the guild embed.
+    pub fn channel_id(mut self, id: Snowflake) -> Self {
+        self.channel_id = Some(id);
+        self
+    }
+}
+
+/// A body that can be sent to the Modify Guild endpoint.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ModifyGuildOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    region: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    verification_level: Option<VerificationLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_message_notifications: Option<DefaultMessageNotifications>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    explicit_content_filter: Option<ExplicitContentFilter>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    afk_channel_id: Option<Snowflake>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    afk_timeout: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    icon: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    owner: Option<Snowflake>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    splash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    system_channel_id: Option<Snowflake>,
+}
+
+impl ModifyGuildOptions {
+    /// Sets a new name for this guild.
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = Some(name.to_string());
+        self
+    }
+
+    /// Sets a new region for this guild.
+    pub fn region(mut self, reg: &str) -> Self {
+        self.region = Some(reg.to_string());
+        self
+    }
+
+    /// Sets a new verification level for this guild.
+    pub fn verification_level(mut self, level: VerificationLevel) -> Self {
+        self.verification_level = Some(level);
+        self
+    }
+
+    /// Sets the default message notifications level for this guild.
+    pub fn default_message_notifications(mut self, level: DefaultMessageNotifications) -> Self {
+        self.default_message_notifications = Some(level);
+        self
+    }
+
+    /// Sets the explicit content filter for this guild.
+    pub fn explicit_content_filter(mut self, filter: ExplicitContentFilter) -> Self {
+        self.explicit_content_filter = Some(filter);
+        self
+    }
+
+    /// Sets the AFK channel for this guild.
+    pub fn afk_channel(mut self, id: Snowflake) -> Self {
+        self.afk_channel_id = Some(id);
+        self
+    }
+
+    /// Sets the AFK timeout for this guild.
+    pub fn afk_timeout(mut self, timeout: i32) -> Self {
+        self.afk_timeout = Some(timeout);
+        self
+    }
+
+    /// Sets the icon of this guild.
+    pub fn icon(mut self, url: &str) -> Self {
+        self.icon = Some(url.to_string());
+        self
+    }
+
+    /// Sets a new owner for this guild.
+    pub fn owner(mut self, id: Snowflake) -> Self {
+        self.owner = Some(id);
+        self
+    }
+
+    /// Sets the splash icon for this guild.
+    pub fn splash(mut self, url: &str) -> Self {
+        self.splash = Some(url.to_string());
+        self
+    }
+
+    /// Sets the system channel of this guild.
+    pub fn system_channel(mut self, chan: Snowflake) -> Self {
+        self.system_channel_id = Some(chan);
+        self
+    }
+}
+
+/// Information about a guild's prune status.
+#[derive(Deserialize, Debug, Clone)]
+pub struct GuildPrune {
+    /// The number of members that have been pruned.
+    pub pruned: i32
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct GuildIntegration {
+    /// The snowflake ID of this integration.
+    pub id: Snowflake,
+    /// The name of this integration.
+    pub name: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+    /// Whether or not this integration is enabled.
+    pub enabled: bool,
+    /// Whether or not this integration is syncing.
+    pub syncing: bool,
+    /// The "subscribers" role for this integration.
+    pub role_id: Snowflake,
+    /// The behavior of expiring subscribers.
+    pub expire_behavior: i32,
+    /// The grace period before expiring subscribers.
+    pub expire_grace_period: i32,
+    /// The user of this integration.
+    pub user: User,
+    /// The integration account information.
+    pub account: IntegrationAccount,
+    /// When this integration was last synced.
+    pub synced_at: DateTime<FixedOffset>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct IntegrationAccount {
+    /// The ID of the account.
+    pub id: String,
+    /// The name of the account.
+    pub name: String,
+}
+
+/// Options for modifying a guild integration.
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct ModifyGuildIntegrationOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expire_behavior: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expire_grace_period: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enable_emoticons: Option<bool>,
+}
+
+impl ModifyGuildIntegrationOptions {
+    /// Sets the new expire behavior for this integration.
+    pub fn expire_behavior(mut self, beh: i32) -> Self {
+        self.expire_behavior = Some(beh);
+        self
+    }
+
+    /// Sets a new expire grace period for this integration.
+    pub fn expire_grace_period(mut self, per: i32) -> Self {
+        self.expire_grace_period = Some(per);
+        self
+    }
+
+    /// Sets whether emoticons should be synced for this integration.
+    pub fn enable_emoticons(mut self, opt: bool) -> Self {
+        self.enable_emoticons = Some(opt);
+        self
+    }
+}
+
+/// Options for creating a Discord guild.
+#[derive(Clone, Debug, Serialize, Default)]
+pub struct CreateGuildOptions {
+    #[serde(default)]
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    region: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    icon: Option<String>,
+    verification_level: Option<VerificationLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_message_notifications: Option<DefaultMessageNotifications>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    explicit_content_filter: Option<ExplicitContentFilter>,
+}
+
+impl CreateGuildOptions {
+    /// Sets the name that the new guild should have. This field is required.
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
+        self
+    }
+
+    /// Sets the voice region name for the new guild.
+    pub fn voice_region(mut self, region: &str) -> Self {
+        self.region = Some(region.to_string());
+        self
+    }
+
+    /// Sets the icon URL for the new guild. Must be base64 encoded.
+    pub fn icon(mut self, icon: String) -> Self {
+        self.icon = Some(icon);
+        self
+    }
+
+    /// Sets the verification level for the guild.
+    pub fn verification_level(mut self, lvl: VerificationLevel) -> Self {
+        self.verification_level = Some(lvl);
+        self
+    }
+
+    /// Sets the default message notifications level for the new guild.
+    pub fn default_message_notifications(mut self, notifs: DefaultMessageNotifications) -> Self {
+        self.default_message_notifications = Some(notifs);
+        self
+    }
+
+    /// Sets the explicit content filter for the new guild.
+    pub fn explicit_content_filter(mut self, filter: ExplicitContentFilter) -> Self {
+        self.explicit_content_filter = Some(filter);
+        self
+    }
+}
+
+
+/// A guild ban object.
+#[derive(Deserialize, Debug, Clone)]
+pub struct GuildBan {
+    /// The reason for the ban, if applicable.
+    pub reason: Option<String>,
+    /// The user who was banned.
+    pub user: User,
+}
+
 /// Represents a packet received when a user is banned from a guild.
 #[derive(Deserialize, Debug, Clone)]
 pub struct GuildBanAdd {
@@ -193,9 +458,9 @@ pub struct GuildRoleUpdate {
 #[derive(Deserialize, Clone, Debug)]
 pub struct GuildRoleDelete {
     /// The guild ID of the guild.
-    pub guild_id: String,
+    pub guild_id: Snowflake,
     /// The ID of the deleted role.
-    pub role: String
+    pub role: Snowflake
 }
 
 /// A guild's explicit content filter levels.

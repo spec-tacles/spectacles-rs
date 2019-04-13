@@ -67,9 +67,34 @@ impl ToString for Channel {
         format!("<#{}>", self.id.0)
     }
 }
+
+/// Options for creating a Discord channel.
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct CreateChannelOptions {
+    name: String,
+    #[serde(rename = "type")]
+    kind: Option<ChannelType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    position: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    topic: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    nsfw: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rate_limit_per_user: Option<i8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bitrate: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_limit: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    permission_overwrites: Option<Vec<PermissionOverwrites>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parent_id: Option<Snowflake>,
+}
+
 /// Options for modifying a Discord channel.
 #[derive(Serialize, Clone, Debug, Default)]
-pub struct ModifyChannel {
+pub struct ModifyChannelOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -90,9 +115,9 @@ pub struct ModifyChannel {
     parent_id: Option<Snowflake>
 }
 
-impl ModifyChannel {
+impl ModifyChannelOptions {
     pub fn new() -> Self {
-        ModifyChannel::default()
+        ModifyChannelOptions::default()
     }
 
     /// Sets a new name for this channel.
@@ -144,8 +169,6 @@ impl ModifyChannel {
         self.parent_id = Some(id.into());
         self
     }
-
-
 }
 /// A channel permission overwrite.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -169,5 +192,7 @@ pub enum ChannelType {
     DM,
     Voice,
     GroupDM,
-    Category
+    Category,
+    News,
+    Store
 }

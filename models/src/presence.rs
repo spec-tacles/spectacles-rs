@@ -206,6 +206,12 @@ impl SendablePacket for ClientPresence {
             d: self
         })
     }
+
+    fn bytes(self) -> Result<Vec<u8>, JsonError> {
+        let json = self.to_json()?;
+
+        Ok(json.as_bytes().to_vec())
+    }
 }
 /// A list of possible activity types.
 #[derive(Deserialize_repr, Serialize_repr, Debug, Clone)]
@@ -213,7 +219,8 @@ impl SendablePacket for ClientPresence {
 pub enum ActivityType {
     Game,
     Streaming,
-    Listening
+    Listening,
+    Watching
 }
 
 impl Default for ActivityType {
@@ -234,6 +241,12 @@ pub enum Status {
     Invisible,
     #[serde(rename = "offline")]
     Offline
+}
+
+impl Default for Status {
+    fn default() -> Self {
+        Status::Online
+    }
 }
 
 
