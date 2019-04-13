@@ -45,7 +45,7 @@ use spectacles_model::{
 };
 
 use crate::{
-    constants::{GATEWAY_URL, GATEWAY_VERSION},
+    constants::GATEWAY_VERSION,
     errors::{Error, Result}
 };
 
@@ -72,6 +72,8 @@ pub struct Shard {
     current_state: Arc<Mutex<String>>,
     /// This shard's current heartbeat.
     pub heartbeat: Arc<Mutex<Heartbeat>>,
+    /// The URL of the Discord Gateway.
+    ws_uri: String
 }
 
 /// Various actions that a shard can perform.
@@ -100,8 +102,8 @@ impl Heartbeat {
 
 impl Shard {
     /// Creates a new Discord Shard, with the provided token.
-    pub fn new(token: String, info: [usize; 2]) -> impl Future<Item = Shard, Error = Error> {
-        Shard::begin_connection(GATEWAY_URL, info[0])
+    pub fn new(token: String, info: [usize; 2], ws_uri: String) -> impl Future<Item=Shard, Error=Error> {
+        Shard::begin_connection(&ws_uri, info[0])
             .map(move |(sender, stream)| {
                 Shard {
                     token,
@@ -115,12 +117,13 @@ impl Shard {
                     sender: Arc::new(Mutex::new(sender)),
                     current_state: Arc::new(Mutex::new(String::from("handshake"))),
                     stream: Arc::new(Mutex::new(Some(stream))),
-                    heartbeat: Arc::new(Mutex::new(Heartbeat::new()))
+                    heartbeat: Arc::new(Mutex::new(Heartbeat::new())),
+                    ws_uri
                 }
             })
     }
 
-    pub fn fulfill_gateway<'a>(&mut self, packet: ReceivePacket<'a>) -> Result<ShardAction> {
+    pub fn fulfill_gateway(&mut self, packet: ReceivePacket) -> Result<ShardAction> {
         let info = self.info.clone();
         let current_state = self.current_state.lock().clone();
         match packet.op {
@@ -222,7 +225,7 @@ impl Shard {
         })
     }
     /// Resolves a Websocket message into a ReceivePacket struct.
-    pub fn resolve_packet<'a>(&self, mess: &'a WebsocketMessage) -> Result<ReceivePacket<'a>> {
+    pub fn resolve_packet(&self, mess: &WebsocketMessage) -> Result<ReceivePacket> {
         match mess {
             WebsocketMessage::Binary(v) => serde_json::from_slice(v),
             WebsocketMessage::Text(v) => serde_json::from_str(v),
@@ -285,7 +288,7 @@ impl Shard {
         let orig_stream = self.stream.clone();
         let heartbeat = self.heartbeat.clone();
 
-        Shard::begin_connection(GATEWAY_URL, info[0])
+        Shard::begin_connection(&self.ws_uri, info[0])
             .map(move |(sender, stream)| {
                 *orig_sender.lock() = sender;
                 *heartbeat.lock() = Heartbeat::new();

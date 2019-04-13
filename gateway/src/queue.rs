@@ -1,8 +1,6 @@
-use std::collections::vec_deque::VecDeque;
 use std::sync::Arc;
 
-// Credits to Serenity for this awesome shard queue.
-use futures::{AsyncSink, future, Future, Poll, Sink, StartSend, sync::mpsc::{SendError, UnboundedSender}};
+use futures::{AsyncSink, Future, Poll, Sink, StartSend, sync::mpsc::{SendError, UnboundedSender}};
 use parking_lot::Mutex;
 use tokio_tungstenite::tungstenite::{
     Error as TungsteniteError,
@@ -72,7 +70,7 @@ pub trait ReconnectQueue {
     fn pop_front(&mut self) -> Box<Future<Item = Option<usize>, Error = Self::Error> + Send>;
 }
 
-#[derive(Clone)]
+/*#[derive(Clone)]
 pub struct ShardQueue {
     pub queue: VecDeque<usize>,
 }
@@ -96,4 +94,4 @@ impl ReconnectQueue for ShardQueue {
         Box::new(future::ok(self.queue.pop_front()))
     }
 }
-
+*/

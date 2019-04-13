@@ -8,6 +8,7 @@ use std::{
 use futures::sync::mpsc::SendError;
 use reqwest::Error as ReqwestError;
 use serde_json::Error as JsonError;
+use tokio::timer::Error as TimerError;
 use tokio_tungstenite::tungstenite::{
     Error as TungsteniteError,
     Message as TungsteniteMessage
@@ -20,6 +21,7 @@ pub enum Error {
     Tungstenite(TungsteniteError),
     Json(JsonError),
     Reqwest(ReqwestError),
+    Timer(TimerError),
     InvalidTokenError,
     Io(IoError),
     TungsteniteSend(SendError<TungsteniteMessage>)
@@ -35,6 +37,7 @@ impl StdError for Error {
     fn description(&self) -> &str {
         match self {
             Error::Reqwest(e) => e.description(),
+            Error::Timer(e) => e.description(),
             Error::Tungstenite(e) => e.description(),
             Error::Io(e) => e.description(),
             Error::TungsteniteSend(e) => e.description(),
@@ -57,6 +60,11 @@ impl From<IoError> for Error {
     }
 }
 
+impl From<TimerError> for Error {
+    fn from(err: TimerError) -> Self {
+        Error::Timer(err)
+    }
+}
 impl From<ReqwestError> for Error {
     fn from(err: ReqwestError) -> Self {
         if let Some(t) = err.status() {
