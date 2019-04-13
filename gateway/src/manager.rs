@@ -50,7 +50,7 @@ pub type ShardMap = HashMap<usize, Arc<Mutex<Shard>>>;
 pub type ManagerShard = Arc<Mutex<Shard>>;
 type MessageStream = UnboundedReceiver<(ManagerShard, TungsteniteMessage)>;
 
-// A stream of shards being spawned and emitting the ready event.
+/// A stream of shards being spawned and emitting the ready event.
 pub struct Spawner {
     inner: UnboundedReceiver<ManagerShard>
 }

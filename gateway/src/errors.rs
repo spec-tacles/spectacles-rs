@@ -14,8 +14,10 @@ use tokio_tungstenite::tungstenite::{
     Message as TungsteniteMessage
 };
 
+/// A modified result type which encompasses the global error type.
 pub type Result<T> = StdResult<T, Error>;
 
+/// Represents a global error which can occur throughout the library.
 #[derive(Debug)]
 pub enum Error {
     Tungstenite(TungsteniteError),
