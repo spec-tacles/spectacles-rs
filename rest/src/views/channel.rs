@@ -142,6 +142,14 @@ impl ChannelView {
         )
     }
 
+    /// Triggers the typing indicator, authored by the client user, in the current channel.
+    pub fn trigger_typing(&self) -> impl Future<Item=(), Error=Error> {
+        self.client.request(Endpoint::new(
+            Method::POST,
+            format!("/channels/{}/typing", self.id),
+        ))
+    }
+
     /// Adds a pinned message to this channel.
     pub fn pin_message(&self, mid: &Snowflake) -> impl Future<Item=(), Error=Error> {
         self.client.request(Endpoint::new(
