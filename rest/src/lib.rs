@@ -89,6 +89,7 @@ use reqwest::r#async::{
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use serde_json::Value;
+use tokio::prelude::*;
 
 pub(crate) use ratelimit::*;
 use spectacles_model::channel::Channel;
@@ -274,14 +275,16 @@ impl RestClient {
                         ResponseStatus::Success(resp) => Loop::Break(resp),
                         ResponseStatus::Ratelimited | ResponseStatus::ServerError => Loop::Continue(limiter_2)
                     })
-            }).and_then(|mut resp| resp.json().from_err()))
+            }).and_then(|resp| resp.into_body().concat2().from_err())
+                .and_then(|body| serde_json::from_slice(&body).map_err(Error::from)))
         } else {
             let req_url = format!("{}{}", self.base_url, &endpt.url);
             let req = self.http.request(endpt.method.clone(), &req_url)
                 .query(&endpt.query)
                 .json(&endpt.json);
             Box::new(req.send().map_err(Error::from)
-                .and_then(|mut resp| resp.json().from_err())
+                .and_then(|resp| resp.into_body().concat2().from_err())
+                .and_then(|body| serde_json::from_slice(&body).map_err(Error::from))
             )
         }
     }
