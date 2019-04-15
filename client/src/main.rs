@@ -21,7 +21,7 @@ fn main () {
         std::env::set_var("RUST_LOG", "INFO");
     };
     let _ = kankyo::load();
-    env_logger::init();
+    pretty_env_logger::init_timed();
 
     let args = argv::get_args();
     match args.subcommand() {
