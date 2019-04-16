@@ -25,8 +25,7 @@ impl WebhookView {
         self.client.request(Endpoint::new(Method::GET, format!("/webhooks/{}", self.id)))
     }
 
-    /// [`WebhookView#get`]: struct.WebhookView.html#method.get
-    /// Similar to [`WebhookView#get`], but accepts a webhook token. The returned webhook does not have a User object.
+    /// Similar to [`method.get.html`], but accepts a webhook token. The returned webhook does not have a User object.
     pub fn get_with_token(&self, token: &str) -> impl Future<Item=Webhook, Error=Error> {
         self.client.request(Endpoint::new(
             Method::GET,
@@ -43,8 +42,7 @@ impl WebhookView {
         ).json(opts))
     }
 
-    /// [`WebhookView#modify`]: struct.WebhookView.html#method.modify
-    /// Similar to [`WebhookView#modify`], but accepts a webhook token. The returned webhook does not have a User object.
+    /// Similar to [`method.modify.html`], but accepts a webhook token. The returned webhook does not have a User object.
     pub fn modify_with_token(&self, token: &str, opts: ModifyWebhookOptions) -> impl Future<Item=Webhook, Error=Error> {
         self.client.request(Endpoint::new(
             Method::PATCH,
@@ -54,16 +52,15 @@ impl WebhookView {
 
     /// Permanently deletes this webhook.
     pub fn delete(&self) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/webhooks/{}", self.id),
         ))
     }
 
-    /// [`WebhookView#delete`]: struct.WebhookView.html#method.delete
-    /// Similar to [`WebhookView#delete`], but accepts a webhook token.
+    /// Similar to [`method.delete.html`], but accepts a webhook token.
     pub fn delete_with_token(&self, token: &str) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/webhooks/{}/{}", self.id, token),
         ))

@@ -19,7 +19,7 @@ fn main() {
     let addr = var("AMQP_ADDR").expect("No AMQP server address found.");
     let connect = AmqpBroker::new(addr, "test".to_string(), None);
     let result = connect.and_then(|broker| {
-        let json = r#"{"message": "Example Publish."}"#.as_bytes();
+        let json = b"{'message': 'Example Publish.'}";
         let props = AmqpProperties::default().with_content_type("application/json".to_string();
         broker.publish("HELLO", json.to_vec(), props).map_err(|err| {
             eprintln!("An error was encountered during publish: {}", err);
