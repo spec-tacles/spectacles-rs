@@ -89,7 +89,6 @@ use reqwest::r#async::{
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use serde_json::Value;
-use tokio::prelude::*;
 
 pub(crate) use ratelimit::*;
 use spectacles_model::channel::Channel;
@@ -207,7 +206,7 @@ impl RestClient {
 
     /// Leaves the guild using the provided guild ID.
     pub fn leave_guild(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.request(Endpoint::new(
+        self.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/users/@me/guilds/{}", id.0),
         ))
@@ -275,16 +274,51 @@ impl RestClient {
                         ResponseStatus::Success(resp) => Loop::Break(resp),
                         ResponseStatus::Ratelimited | ResponseStatus::ServerError => Loop::Continue(limiter_2)
                     })
-            }).and_then(|resp| resp.into_body().concat2().from_err())
-                .and_then(|body| serde_json::from_slice(&body).map_err(Error::from)))
+            }).and_then(|mut resp| resp.json().from_err()))
         } else {
             let req_url = format!("{}{}", self.base_url, &endpt.url);
             let req = self.http.request(endpt.method.clone(), &req_url)
                 .query(&endpt.query)
                 .json(&endpt.json);
             Box::new(req.send().map_err(Error::from)
-                .and_then(|resp| resp.into_body().concat2().from_err())
-                .and_then(|body| serde_json::from_slice(&body).map_err(Error::from))
+                .and_then(|mut resp| resp.json().from_err())
+            )
+        }
+    }
+
+    /// Similar to the above method, but does not attempt to deserialize a JSON payload from the request.
+    /// Use this method if you are dealing with routes that return 204 (No content).
+    pub fn request_empty(&self, mut endpt: Endpoint) -> Box<Future<Item=(), Error=Error> + Send> {
+        if let Some(ref rl) = self.ratelimiter {
+            let http = self.http.clone();
+            let base = self.base_url.clone();
+            Box::new(futures::future::loop_fn(Arc::clone(rl), move |ratelimit| {
+                let req_url = format!("{}{}", base, &endpt.url);
+                let route = Bucket::make_route(endpt.method.clone(), req_url.clone());
+                let mut req = http.request(endpt.method.clone(), &req_url)
+                    .query(&endpt.query)
+                    .json(&endpt.json);
+                if endpt.multipart.is_some() {
+                    let form = endpt.multipart.take().unwrap();
+                    req = req.multipart(form);
+                };
+                let limiter = Arc::clone(&ratelimit);
+                let limiter_2 = Arc::clone(&limiter);
+                ratelimit.lock().enqueue(route.clone())
+                    .and_then(|_| req.send().from_err())
+                    .and_then(move |resp| limiter.lock().handle_resp(route, resp))
+                    .map(move |status| match status {
+                        ResponseStatus::Success(resp) => Loop::Break(resp),
+                        ResponseStatus::Ratelimited | ResponseStatus::ServerError => Loop::Continue(limiter_2)
+                    })
+            }).map(|_| ()))
+        } else {
+            let req_url = format!("{}{}", self.base_url, &endpt.url);
+            let req = self.http.request(endpt.method.clone(), &req_url)
+                .query(&endpt.query)
+                .json(&endpt.json);
+            Box::new(req.send().map_err(Error::from)
+                .map(|_| ())
             )
         }
     }

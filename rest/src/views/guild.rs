@@ -101,7 +101,7 @@ impl GuildView {
 
     /// Adds a role to the specified guild member.
     pub fn add_member_role(&self, member: &Snowflake, role: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(
+        self.client.request_empty(
             Endpoint::new(
                 Method::PUT,
                 format!("/guilds/{}/members/{}/roles/{}", self.id, member.0, role.0),
@@ -147,7 +147,7 @@ impl GuildView {
 
     /// Deletes the provided emoji from the guild.
     pub fn delete_emoji(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/guilds/{}/emojis/{}", self.id, id.0),
         ))
@@ -179,7 +179,7 @@ impl GuildView {
 
     /// Removes a ban for the provided user from the guild.
     pub fn remove_ban(&self, user: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/guilds/{}/bans/{}", self.id, user.0),
         ))
@@ -273,7 +273,7 @@ impl GuildView {
             "id": id
         });
 
-        self.client.request(
+        self.client.request_empty(
             Endpoint::new(
                 Method::POST,
                 format!("/guilds/{}/integrations", self.id),
@@ -284,7 +284,7 @@ impl GuildView {
 
     /// Modifies the behavior and settings of a guild integration.
     pub fn modify_integration(&self, id: &Snowflake, opts: ModifyGuildIntegrationOptions) -> impl Future<Item=(), Error=Error> {
-        self.client.request(
+        self.client.request_empty(
             Endpoint::new(
                 Method::PATCH,
                 format!("/guilds/{}/integrations/{}", self.id, id.0),
@@ -294,7 +294,7 @@ impl GuildView {
 
     /// Deletes a guild integration by the provided ID.
     pub fn delete_integration(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/guilds/{}/integrations/{}", self.id, id.0),
         ))
@@ -302,7 +302,7 @@ impl GuildView {
 
     /// Syncs guild integration by the provided ID.
     pub fn sync_integration(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::POST,
             format!("/guilds/{}/integrations/{}", self.id, id.0),
         ))
@@ -331,7 +331,7 @@ impl GuildView {
 
     /// Removes a role from the specified guild member.
     pub fn remove_member_role(&self, member: &Snowflake, role: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/guilds/{}/members/{}/roles/{}", self.id, member.0, role.0),
         ))
@@ -339,7 +339,7 @@ impl GuildView {
 
     /// Modifies a guild member in this guild.
     pub fn modify_member(&self, id: &Snowflake, opts: ModifyMemberOptions) -> impl Future<Item=(), Error=Error> {
-        self.client.request(
+        self.client.request_empty(
             Endpoint::new(
                 Method::PATCH,
                 format!("/guilds/{}/members/{}", self.id, id.0),
@@ -349,7 +349,7 @@ impl GuildView {
 
     /// Removes a guild member from the guild.
     pub fn remove_member(&self, member: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/guilds/{}/members/{}", self.id, member.0),
         ))

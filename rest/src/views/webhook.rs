@@ -52,7 +52,7 @@ impl WebhookView {
 
     /// Permanently deletes this webhook.
     pub fn delete(&self) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/webhooks/{}", self.id),
         ))
@@ -60,7 +60,7 @@ impl WebhookView {
 
     /// Similar to [`method.delete.html`], but accepts a webhook token.
     pub fn delete_with_token(&self, token: &str) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/webhooks/{}/{}", self.id, token),
         ))
