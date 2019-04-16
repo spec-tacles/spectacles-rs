@@ -13,11 +13,8 @@
 //!
 //! ## Views
 //! The Client ships with three views for specific endpoints of the Discord API.
-//!
 //! The [`ChannelView`] provides a set of methods for interacting with a Discord channel.
-//!
-//! The [`GuildView`] provides a set of methods for interacting with a Discord guild, or "server".
-//!
+//! The [`GuildlView`] provides a set of methods for interacting with a Discord guild, or "server".
 //! The [`WebhookView`] provides a set of methods for interacting with Discord webhooks.
 //!
 //! [`ChannelView`]: struct.ChannelView.html
@@ -26,27 +23,27 @@
 //! [`RestClient`]: struct.RestClient.html
 //!
 //! Here is a brief example of sending a message to a Discord channel using the ChannelView.
-//! ```rust, norun
-//! use tokio::prelude::*;
+//! ```rust
+//! #![feature(futures_api, async_await, await_macro)]
+//! #[macro_use] extern crate tokio;
 //! use spectacles_rest::RestClient;
 //! use spectacles_model::Snowflake;
 //!
 //! fn main() {
+//!     // ~snip~
 //!     // Initialize the Rest Client, with a token.
 //!     let rest = RestClient::new(token, true);
-//!     tokio::run(rest.channel(&Snowflake(CHANNEL_ID_HERE)).create_message("Hello World")
-//!         .map(|message| println!("Message Sent: {:?}", message))
-//!         .map_err(|err| {
-//!             eprintln!("Error whilst attempting to send message. {:?}", err);
-//!         })
-//!     );
+//!     tokio::run_async(async {
+//!         // We create a Snowflake object from an ID that we provide, passing it to the ChannelView.
+//!         await!(rest.channel(&Snowflake(CHANNEL_ID_HERE)).create_message("Hello World."))
+//!             .expect("Failed to send message to Discord");
+//!     });
 //! }
 //! ```
 //! ## Rate Limiting
 //! As mentioned earlier, the library includes an in-memory rate limiter bucket system for preemptively managing Discord Ratelimits.
 //! This is sufficient if you do not plan on accessing the Discord API from a single server.
 //! If you plan to make requests in a distributed fashion, you will need to make use of an external state for keeping track of rate limits.
-//!
 //! The library currently supports using a custom Discord proxy, featured in the Spectacles client, to be used as a central hub for handling requests.
 //! ```rust
 //! use spectacles_rest::RestClient;
@@ -63,7 +60,11 @@
 //! ```toml
 //! [dependencies]
 //! spectacles-rest = "0.1.0"
+//! ```
+//!
+//! ```
 
+#![feature(futures_api, async_await, await_macro)]
 
 #[macro_use]
 extern crate log;
@@ -152,9 +153,9 @@ impl RestClient {
         rest
     }
 
-    /// Changes the base URL for all requests that are made to the Discord API.
-    /// Here, you may specify a URL to an HTTP ratelimiter proxy.
-    pub fn set_base_url(mut self, url: String) -> Self {
+    /// Enables support for routing all requests though an HTTP rate limiting proxy.
+    /// If you plan on making distributed REST requests, an HTTP proxy is recommended for handling rate limits in a distributed manner.
+    pub fn set_proxy(mut self, url: String) -> Self {
         self.base_url = url;
         self
     }
@@ -182,7 +183,7 @@ impl RestClient {
         ))
     }
 
-    /// Opens a new DM channel with the provided user ID.
+    /// Opens a new DM channel with the user at the provided user ID.
     pub fn create_dm(&self, user: &Snowflake) -> impl Future<Item=Channel, Error=Error> {
         let json = json!({
             "recipient_id": user.0
@@ -205,7 +206,7 @@ impl RestClient {
 
     /// Leaves the guild using the provided guild ID.
     pub fn leave_guild(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.request(Endpoint::new(
+        self.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/users/@me/guilds/{}", id.0),
         ))
@@ -281,6 +282,43 @@ impl RestClient {
                 .json(&endpt.json);
             Box::new(req.send().map_err(Error::from)
                 .and_then(|mut resp| resp.json().from_err())
+            )
+        }
+    }
+
+    /// Similar to the above method, but does not attempt to deserialize a JSON payload from the request.
+    /// Use this method if you are dealing with routes that return 204 (No content).
+    pub fn request_empty(&self, mut endpt: Endpoint) -> Box<Future<Item=(), Error=Error> + Send> {
+        if let Some(ref rl) = self.ratelimiter {
+            let http = self.http.clone();
+            let base = self.base_url.clone();
+            Box::new(futures::future::loop_fn(Arc::clone(rl), move |ratelimit| {
+                let req_url = format!("{}{}", base, &endpt.url);
+                let route = Bucket::make_route(endpt.method.clone(), req_url.clone());
+                let mut req = http.request(endpt.method.clone(), &req_url)
+                    .query(&endpt.query)
+                    .json(&endpt.json);
+                if endpt.multipart.is_some() {
+                    let form = endpt.multipart.take().unwrap();
+                    req = req.multipart(form);
+                };
+                let limiter = Arc::clone(&ratelimit);
+                let limiter_2 = Arc::clone(&limiter);
+                ratelimit.lock().enqueue(route.clone())
+                    .and_then(|_| req.send().from_err())
+                    .and_then(move |resp| limiter.lock().handle_resp(route, resp))
+                    .map(move |status| match status {
+                        ResponseStatus::Success(resp) => Loop::Break(resp),
+                        ResponseStatus::Ratelimited | ResponseStatus::ServerError => Loop::Continue(limiter_2)
+                    })
+            }).map(|_| ()))
+        } else {
+            let req_url = format!("{}{}", self.base_url, &endpt.url);
+            let req = self.http.request(endpt.method.clone(), &req_url)
+                .query(&endpt.query)
+                .json(&endpt.json);
+            Box::new(req.send().map_err(Error::from)
+                .map(|_| ())
             )
         }
     }

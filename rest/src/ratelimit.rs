@@ -76,7 +76,7 @@ impl Ratelimter {
                     warn!("Reached route-level ratelimit, slowing down request.");
                     let bkt = Arc::clone(&bucket);
                     let reset = bkt.lock().reset.unwrap();
-                    let duration = reset.sub(Utc::now()).to_std().unwrap();
+                    let duration = reset.sub(Utc::now()).to_std().unwrap_or(Duration::from_secs(0));
                     Box::new(Delay::new(Instant::now() + duration)
                         .map_err(Error::from)
                         .map(move |_| {

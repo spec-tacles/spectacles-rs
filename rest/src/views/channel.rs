@@ -31,7 +31,7 @@ impl ChannelView {
 
     /// Creates a message in the current channel.
     /// This endpoint requires the Create Messages permission on Discord.
-    pub fn create_message(&self, payload: impl MessageResponse) -> impl Future<Item=Message, Error=Error> {
+    pub fn create_message<M: MessageResponse>(&self, payload: M) -> impl Future<Item=Message, Error=Error> {
         let endpt = Endpoint::new(
             Method::POST,
             format!("/channels/{}/messages", self.id),
@@ -68,7 +68,7 @@ impl ChannelView {
 
     /// Edits a permission overwrite for a given channel.
     pub fn edit_overwrite(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::PUT,
             format!("/channels/{}/permissions/{}", self.id, id.0),
         ))
@@ -76,7 +76,7 @@ impl ChannelView {
 
     /// Deletes a permission overwrite for the current channel.
     pub fn delete_overwrite(&self, id: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/channels/{}/permissions/{}", self.id, id.0),
         ))
@@ -116,7 +116,7 @@ impl ChannelView {
 
     /// Deletes a pinned message from this channel.
     pub fn delete_pin(&self, mid: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/channels/{}/pins/{}", self.id, mid),
         ))
@@ -142,9 +142,17 @@ impl ChannelView {
         )
     }
 
+    /// Triggers the typing indicator, authored by the client user, in the current channel.
+    pub fn trigger_typing(&self) -> impl Future<Item=(), Error=Error> {
+        self.client.request_empty(Endpoint::new(
+            Method::POST,
+            format!("/channels/{}/typing", self.id),
+        ))
+    }
+
     /// Adds a pinned message to this channel.
     pub fn pin_message(&self, mid: &Snowflake) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::PUT,
             format!("/channels/{}/pins/{}", self.id, mid),
         ))
@@ -195,7 +203,7 @@ impl ChannelMessagesView {
             "messages": ids
         });
 
-        self.client.request(
+        self.client.request_empty(
             Endpoint::new(
                 Method::POST,
                 format!("/channels/{}/messages/bulk-delete", self.id),
@@ -221,7 +229,7 @@ impl ChannelMessageReactionsView {
         Self {
             id,
             message_id,
-            client,
+            client
         }
     }
     /// Get a list of users who have reacted to this message with the provided emoji.
@@ -235,7 +243,7 @@ impl ChannelMessageReactionsView {
     }
 
     pub fn delete_all(&self) -> impl Future<Item=(), Error=Error> {
-        self.client.request(Endpoint::new(
+        self.client.request_empty(Endpoint::new(
             Method::DELETE,
             format!("/channels/{}/messages/{}/reactions", self.id, self.message_id),
         ))

@@ -36,7 +36,6 @@ impl Display for APIError {
         f.write_str(self.description())
     }
 }
-
 /// Represents a global error which can occur throughout the library.
 #[derive(Debug)]
 pub enum Error {
