@@ -24,8 +24,6 @@
 //!
 //! Here is a brief example of sending a message to a Discord channel using the ChannelView.
 //! ```rust
-//! #![feature(futures_api, async_await, await_macro)]
-//! #[macro_use] extern crate tokio;
 //! use spectacles_rest::RestClient;
 //! use spectacles_model::Snowflake;
 //!
