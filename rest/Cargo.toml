@@ -3,6 +3,7 @@ name = "spectacles-rest"
 description = "A Spectacles REST client for Rust."
 repository = "https://github.com/spec-tacles/spectacles-rs"
 version = "0.1.1"
+license = "MIT"
 authors = ["Texlo-Dev <richrancy@gmail.com>"]
 edition = "2018"
 
