@@ -231,12 +231,17 @@ impl ShardManager {
                     };
                 },
                 ShardAction::Reconnect => {
-                    info!("[Shard {}] Reconnection successful.", shard.lock().info[0]);
+                    let sd = Arc::clone(&shard);
+                    tokio::spawn(shard.lock().reconnect().map(move |_| {
+                        info!("[Shard {}] Reconnection successful.", sd.lock().info[0]);
+                    }).map_err(|err| {
+                        error!("Shard failed to reconnect to the gateway. {}", err);
+                    }));
                 },
                 ShardAction::Resume => {
                     let sd = Arc::clone(&shard);
                     tokio::spawn(shard.lock().resume().map(move |_| {
-                        debug!("[Shard {}] Successfully resumed session.", sd.lock().info[0]);
+                        info!("[Shard {}] Successfully resumed session.", sd.lock().info[0]);
                     }).map_err(|err| {
                         error!("Shard failed to resume session. {}", err);
                     }));

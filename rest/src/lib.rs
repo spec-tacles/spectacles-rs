@@ -113,7 +113,7 @@ pub struct RestClient {
     pub token: String,
     /// The base URL of the client. This may be changed to accomodate an external proxy system.
     pub base_url: String,
-    pub http: ReqwestClient,
+    http: ReqwestClient,
     ratelimiter: Option<Arc<Mutex<Ratelimter>>>,
 }
 

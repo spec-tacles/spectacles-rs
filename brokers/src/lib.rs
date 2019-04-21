@@ -20,14 +20,13 @@
 //!    let result = connect.and_then(|broker| {
 //!        let json = r#"{"message": "Example Publish."}"#.as_bytes();
 //!        broker.publish("HELLO", json.to_vec())
-//!    });
-//!    let success = result.map(|_| {
+//!    }).map(|_| {
 //!        println!("Message publish succeeded, check the other window!");
 //!    }).map_err(|err| {
 //!        eprintln!("An error was encountered during publish: {}", err);
 //!    });
 //!
-//!    tokio::run(success);
+//!    tokio::run(result);
 //! }
 //! ```
 //!
@@ -39,8 +38,3 @@ pub use errors::Error;
 mod errors;
 /// Utilities for interfacing with an AMQP-based message broker.
 pub mod amqp;
-
-/// Event handler for receiving messages from a message brokers.
-pub trait MessageHandler {
-    fn on_message(&self, event: &str, payload: String);
-}

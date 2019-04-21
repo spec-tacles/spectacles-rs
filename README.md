@@ -14,6 +14,7 @@ If you so choose, you may even have your bot use different programming languages
 ## Getting started
 This library features several important crates to help you get started.
 
+[Spedctacles Brokers](brokers/) - Message brokers which allow for powerful communication between services.
 [Spectacles Client](client/) - A standalone binary for Spectacles, which includes a Discord gateway and an event publishing system.
 
 [Spectacles Gateway](gateway/) - A Spectacles gateway implementation for Discord with enables stateless sharding.

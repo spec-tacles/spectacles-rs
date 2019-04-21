@@ -161,6 +161,7 @@ impl AmqpBroker {
     ///     })
     /// ```
     ///
+
     pub fn consume(&self, evt: &str) -> AmqpConsumer {
         let (tx, rx) = unbounded();
         let exch_opts = ExchangeDeclareOptions {
