@@ -12,7 +12,9 @@ The microservices architecture is also very beneficial in the sense that you can
 If you so choose, you may even have your bot use different programming languages for each service. For example, you could have your gateway in Rust, and your workers in Golang. They will all come together with help from the message broker.
 
 ## Getting started
-This library features seveal important crates to help you get started.
+This library features several important crates to help you get started.
+
+[Spectacles Brokers](brokers/) - Message brokers which allow for powerful communication between services.
 
 [Spectacles Client](client/) - A standalone binary for Spectacles, which includes a Discord gateway and an event publishing system.
 

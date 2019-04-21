@@ -74,13 +74,13 @@ impl AmqpBroker {
     pub async fn new(uri: &str, group: String, subgroup: Option<String>) -> BrokerResult<AmqpBroker> {
         let strategy = Strategy::fibonacci(Duration::from_secs(2))
             .with_max_retries(10);
-        let (publish, phb) = tokio::await!(strategy.retry(|| uri.connect_cancellable(|err| {
+        let (publish, phb) = await!(strategy.retry(|| uri.connect_cancellable(|err| {
             eprintln!("Error encountered while attempting heartbeat. {}", err);
         })))?;
-        let (consume, chb) = tokio::await!(strategy.retry(|| uri.connect_cancellable(|err| {
+        let (consume, chb) = await!(strategy.retry(|| uri.connect_cancellable(|err| {
             eprintln!("Error encountered while attempting heartbeat. {}", err);
         })))?;
-        let pub_channel = tokio::await!(publish.create_channel())?;
+        let pub_channel = await!(publish.create_channel())?;
 
         Ok(Self {
             consume_state: ConsumerState {
@@ -184,17 +184,17 @@ impl AmqpBroker {
             durable: true,
             ..Default::default()
         };
-        let channel = tokio::await!(self.consume_state.connection.create_channel())?;
-        tokio::await!(channel.exchange_declare(&self.group, "direct", exch_opts, FieldTable::new()))?;
-        let queue = tokio::await!(channel.queue_declare(&queue_name, queue_opts, FieldTable::new()))?;
+        let channel = await!(self.consume_state.connection.create_channel())?;
+        await!(channel.exchange_declare(&self.group, "direct", exch_opts, FieldTable::new()))?;
+        let queue = await!(channel.queue_declare(&queue_name, queue_opts, FieldTable::new()))?;
         debug!("Channel ID: {} has declared queue: {}", channel.id, queue_name);
-        tokio::await!(channel.queue_bind(&queue_name, &self.group, evt, QueueBindOptions::default(), FieldTable::new()))?;
-        let mut consumer = tokio::await!(channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new()))?;
+        await!(channel.queue_bind(&queue_name, &self.group, evt, QueueBindOptions::default(), FieldTable::new()))?;
+        let mut consumer = await!(channel.basic_consume(&queue, "", BasicConsumeOptions::default(), FieldTable::new()))?;
 
         tokio::spawn_async(async move {
-            while let Some(Ok(mess)) = tokio::await!(consumer.next()) {
+            while let Some(Ok(mess)) = await!(consumer.next()) {
                 tx.unbounded_send(mess.data).expect("Failed to send message to stream");
-                tokio::await!(channel.basic_ack(mess.delivery_tag, false)).expect("Failed to acknowledge message");
+                await!(channel.basic_ack(mess.delivery_tag, false)).expect("Failed to acknowledge message");
             };
         });
 

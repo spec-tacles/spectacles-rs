@@ -35,6 +35,8 @@
 //! More examples can be found in the examples directory on Github.
 #![feature(async_await, await_macro, futures_api)]
 #[macro_use] extern crate log;
+#[macro_use]
+extern crate tokio;
 
 pub use errors::Error;
 

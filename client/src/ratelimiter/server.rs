@@ -8,6 +8,7 @@ use chrono::offset::TimeZone;
 use futures::future::{Future, Loop};
 use futures::stream::Stream;
 use hyper::{Body, HeaderMap, Method, Request, Response, Server, Uri, Version};
+use hyper::header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
 use hyper::header::HeaderValue;
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
@@ -108,14 +109,14 @@ impl RatelimitServer {
 
                         let old_headers = state.headers.clone();
                         let mut new_headers = HeaderMap::new();
-                        if old_headers.contains_key("Authorization") {
-                            new_headers.insert("Authorization", old_headers["Authorization"].clone());
+                        if old_headers.contains_key(AUTHORIZATION) {
+                            new_headers.insert(AUTHORIZATION, old_headers[AUTHORIZATION].clone());
                         };
-                        if old_headers.contains_key("User-Agent") {
-                            new_headers.insert("User-Agent", old_headers["User-Agent"].clone());
+                        if old_headers.contains_key(USER_AGENT) {
+                            new_headers.insert(USER_AGENT, old_headers[USER_AGENT].clone());
                         };
-                        if old_headers.contains_key("Content-Type") {
-                            new_headers.insert("Content-Type", old_headers["Content-Type"].clone());
+                        if old_headers.contains_key(CONTENT_TYPE) {
+                            new_headers.insert(CONTENT_TYPE, old_headers[CONTENT_TYPE].clone());
                         };
 
                         *new_req.headers_mut() = new_headers;
